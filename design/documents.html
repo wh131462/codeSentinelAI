@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSentinel - 文档管理</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            background-color: #000;
+            color: #e2e8f0;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .drop-zone {
+            border: 2px dashed rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        .drop-zone:hover, .drop-zone.dragging {
+            border-color: rgba(99, 102, 241, 0.5);
+            background: rgba(99, 102, 241, 0.05);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- Icons ---
+        const Icons = {
+            Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />,
+            FileText: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
+            File: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
+            FileCode: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="m10 13-2 2 2 2" /><path d="m14 17 2-2-2-2" /></>,
+            Upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></>,
+            Search: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>,
+            Filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
+            MoreVertical: <><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></>,
+            CheckCircle2: <><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></>,
+            AlertTriangle: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" x2="12" y1="9" y2="13" /><line x1="12" x2="12.01" y1="17" y2="17" /></>,
+            Clock: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
+            Loader2: <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
+            Trash2: <><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></>,
+            Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></>,
+            Eye: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>,
+            RefreshCw: <><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></>,
+            FolderOpen: <><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></>,
+            Grid: <><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></>,
+            List: <><line x1="8" x2="21" y1="6" y2="6" /><line x1="8" x2="21" y1="12" y2="12" /><line x1="8" x2="21" y1="18" y2="18" /><line x1="3" x2="3.01" y1="6" y2="6" /><line x1="3" x2="3.01" y1="12" y2="12" /><line x1="3" x2="3.01" y1="18" y2="18" /></>,
+            Star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />,
+            Link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
+            Plus: <><path d="M5 12h14" /><path d="M12 5v14" /></>,
+            X: <path d="M18 6 6 18M6 6l12 12" />,
+            Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+        };
+
+        const Lucide = ({ name, className, size = 16 }) => {
+            const icon = Icons[name];
+            return icon ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icon}
+                </svg>
+            ) : null;
+        };
+
+        // --- Navbar ---
+        const Navbar = ({ active }) => (
+            <nav className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0A0A0A]/80 backdrop-blur-md sticky top-0 z-50">
+                <div className="flex items-center gap-8">
+                    <a href="index.html" className="flex items-center gap-3 group">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                            <Lucide name="Shield" className="text-white" size={20} />
+                        </div>
+                        <span className="font-bold text-xl tracking-tight text-white group-hover:text-white/90 transition-colors">
+                            CodeSentinel <span className="text-indigo-400 text-xs ml-1 font-normal bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Ent</span>
+                        </span>
+                    </a>
+                    <div className="hidden md:flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                        {[
+                            { id: 'overview', label: '仪表盘', href: 'overview.html' },
+                            { id: 'workspace', label: '工作台', href: 'workspace.html' },
+                            { id: 'mapping', label: '需求映射', href: 'mapping.html' },
+                            { id: 'pipeline', label: '流水线', href: 'pipeline.html' },
+                            { id: 'configuration', label: '仓库配置', href: 'configuration.html' }
+                        ].map((item) => (
+                            <a key={item.id} href={item.href} className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${active === item.id ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}>
+                                {item.label}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 pl-4">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs font-medium text-white">张三 (PM)</span>
+                            <span className="text-[10px] text-white/40">产品经理</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-[1px]">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=PM" alt="User" className="w-full h-full rounded-full bg-black" />
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        );
+
+        // --- Mock Data ---
+        const DOCUMENTS = [
+            {
+                id: '1',
+                name: 'PRD-2024-001_电商核心交易流程.pdf',
+                type: 'prd',
+                size: '2.4 MB',
+                status: 'parsed',
+                score: 92,
+                requirements: 24,
+                uploadedBy: '李明',
+                uploadTime: '2024-01-15 10:00',
+                lastSync: '10 分钟前',
+                version: 'v2.1',
+                starred: true
+            },
+            {
+                id: '2',
+                name: 'PRD-2024-002_用户中心需求规格.pdf',
+                type: 'prd',
+                size: '1.8 MB',
+                status: 'parsed',
+                score: 85,
+                requirements: 18,
+                uploadedBy: '王芳',
+                uploadTime: '2024-01-16 14:20',
+                lastSync: '2 小时前',
+                version: 'v1.5',
+                starred: false
+            },
+            {
+                id: '3',
+                name: 'API_Spec_支付网关_v3.0.yaml',
+                type: 'api',
+                size: '156 KB',
+                status: 'parsed',
+                score: 78,
+                requirements: 32,
+                uploadedBy: '张三',
+                uploadTime: '2024-01-17 09:30',
+                lastSync: '1 天前',
+                version: 'v3.0',
+                starred: true
+            },
+            {
+                id: '4',
+                name: '用户等级运费规则说明.md',
+                type: 'doc',
+                size: '45 KB',
+                status: 'parsed',
+                score: 88,
+                requirements: 8,
+                uploadedBy: '李明',
+                uploadTime: '2024-01-18 11:15',
+                lastSync: '30 分钟前',
+                version: 'v1.2',
+                starred: false
+            },
+            {
+                id: '5',
+                name: '系统架构设计文档.pdf',
+                type: 'design',
+                size: '5.2 MB',
+                status: 'parsing',
+                score: null,
+                requirements: null,
+                uploadedBy: '赵六',
+                uploadTime: '2024-01-18 15:00',
+                lastSync: '刚刚',
+                version: 'v1.0',
+                starred: false
+            },
+            {
+                id: '6',
+                name: '测试用例模板.xlsx',
+                type: 'test',
+                size: '320 KB',
+                status: 'failed',
+                score: null,
+                requirements: null,
+                uploadedBy: '王五',
+                uploadTime: '2024-01-18 14:30',
+                lastSync: '1 小时前',
+                version: 'v1.0',
+                starred: false,
+                error: '文件格式不支持，请转换为 PDF 或 Markdown'
+            }
+        ];
+
+        const DOC_TYPES = {
+            prd: { label: 'PRD', color: 'indigo', icon: 'FileText' },
+            api: { label: 'API', color: 'emerald', icon: 'FileCode' },
+            doc: { label: '文档', color: 'amber', icon: 'File' },
+            design: { label: '设计', color: 'purple', icon: 'FolderOpen' },
+            test: { label: '测试', color: 'rose', icon: 'File' }
+        };
+
+        // --- Components ---
+        const StatusBadge = ({ status, error }) => {
+            if (status === 'parsed') {
+                return (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold">
+                        <Lucide name="CheckCircle2" size={12} /> 已解析
+                    </span>
+                );
+            }
+            if (status === 'parsing') {
+                return (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-bold">
+                        <Lucide name="Loader2" size={12} className="animate-spin" /> 解析中
+                    </span>
+                );
+            }
+            if (status === 'failed') {
+                return (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full text-xs font-bold" title={error}>
+                        <Lucide name="AlertTriangle" size={12} /> 失败
+                    </span>
+                );
+            }
+            return null;
+        };
+
+        const DocumentCard = ({ doc, viewMode }) => {
+            const typeConfig = DOC_TYPES[doc.type] || DOC_TYPES.doc;
+
+            if (viewMode === 'grid') {
+                return (
+                    <div className={`bg-[#0F0F0F] border rounded-xl p-5 hover:border-white/10 transition-all group cursor-pointer ${
+                        doc.status === 'failed' ? 'border-rose-500/30' : 'border-white/5'
+                    }`}>
+                        <div className="flex items-start justify-between mb-4">
+                            <div className={`p-3 rounded-xl bg-${typeConfig.color}-500/10 text-${typeConfig.color}-400`}>
+                                <Lucide name={typeConfig.icon} size={24} />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {doc.starred && <Lucide name="Star" size={14} className="text-amber-400 fill-amber-400" />}
+                                <button className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-white opacity-0 group-hover:opacity-100 transition-all">
+                                    <Lucide name="MoreVertical" size={14} />
+                                </button>
+                            </div>
+                        </div>
+                        <h4 className="text-white font-bold mb-2 truncate group-hover:text-indigo-300 transition-colors" title={doc.name}>
+                            {doc.name}
+                        </h4>
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className={`text-[10px] px-2 py-0.5 rounded bg-${typeConfig.color}-500/20 text-${typeConfig.color}-400 font-bold`}>
+                                {typeConfig.label}
+                            </span>
+                            <span className="text-xs text-white/30">{doc.version}</span>
+                            <span className="text-xs text-white/30">{doc.size}</span>
+                        </div>
+                        <div className="flex items-center justify-between mb-3">
+                            <StatusBadge status={doc.status} error={doc.error} />
+                            {doc.score && (
+                                <span className={`text-lg font-bold ${
+                                    doc.score >= 90 ? 'text-emerald-400' : doc.score >= 70 ? 'text-amber-400' : 'text-rose-400'
+                                }`}>{doc.score}</span>
+                            )}
+                        </div>
+                        {doc.requirements && (
+                            <div className="text-xs text-white/40 mb-3">
+                                已提取 <span className="text-white/80 font-bold">{doc.requirements}</span> 条需求
+                            </div>
+                        )}
+                        <div className="flex items-center justify-between text-xs text-white/30 pt-3 border-t border-white/5">
+                            <span>{doc.uploadedBy}</span>
+                            <span className="flex items-center gap-1">
+                                <Lucide name="Clock" size={10} />
+                                {doc.lastSync}
+                            </span>
+                        </div>
+                    </div>
+                );
+            }
+
+            // List view
+            return (
+                <div className={`bg-[#0F0F0F] border rounded-xl p-4 hover:border-white/10 transition-all group cursor-pointer ${
+                    doc.status === 'failed' ? 'border-rose-500/30' : 'border-white/5'
+                }`}>
+                    <div className="flex items-center gap-4">
+                        <div className={`p-2.5 rounded-xl bg-${typeConfig.color}-500/10 text-${typeConfig.color}-400 shrink-0`}>
+                            <Lucide name={typeConfig.icon} size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-white font-bold truncate group-hover:text-indigo-300 transition-colors">
+                                    {doc.name}
+                                </h4>
+                                {doc.starred && <Lucide name="Star" size={12} className="text-amber-400 fill-amber-400 shrink-0" />}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-white/40">
+                                <span className={`px-1.5 py-0.5 rounded bg-${typeConfig.color}-500/20 text-${typeConfig.color}-400 font-bold`}>
+                                    {typeConfig.label}
+                                </span>
+                                <span>{doc.version}</span>
+                                <span>{doc.size}</span>
+                                <span>{doc.uploadedBy}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0">
+                            {doc.requirements && (
+                                <div className="text-center">
+                                    <div className="text-lg font-bold text-white">{doc.requirements}</div>
+                                    <div className="text-[10px] text-white/40">需求</div>
+                                </div>
+                            )}
+                            {doc.score && (
+                                <div className="text-center">
+                                    <div className={`text-lg font-bold ${
+                                        doc.score >= 90 ? 'text-emerald-400' : doc.score >= 70 ? 'text-amber-400' : 'text-rose-400'
+                                    }`}>{doc.score}</div>
+                                    <div className="text-[10px] text-white/40">评分</div>
+                                </div>
+                            )}
+                            <StatusBadge status={doc.status} error={doc.error} />
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                <button className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white" title="查看">
+                                    <Lucide name="Eye" size={14} />
+                                </button>
+                                <button className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white" title="下载">
+                                    <Lucide name="Download" size={14} />
+                                </button>
+                                <button className="p-2 hover:bg-rose-500/20 rounded-lg text-white/40 hover:text-rose-400" title="删除">
+                                    <Lucide name="Trash2" size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main View ---
+        const DocumentsView = () => {
+            const [viewMode, setViewMode] = useState('grid');
+            const [filterType, setFilterType] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [showUploadModal, setShowUploadModal] = useState(false);
+            const [isDragging, setIsDragging] = useState(false);
+
+            const filteredDocs = DOCUMENTS.filter(doc => {
+                if (filterType !== 'all' && doc.type !== filterType) return false;
+                if (searchQuery && !doc.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+                return true;
+            });
+
+            const stats = {
+                total: DOCUMENTS.length,
+                parsed: DOCUMENTS.filter(d => d.status === 'parsed').length,
+                parsing: DOCUMENTS.filter(d => d.status === 'parsing').length,
+                failed: DOCUMENTS.filter(d => d.status === 'failed').length,
+                requirements: DOCUMENTS.reduce((sum, d) => sum + (d.requirements || 0), 0)
+            };
+
+            return (
+                <div className="min-h-screen bg-black text-slate-200">
+                    <Navbar active="" />
+                    <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-6 fade-in">
+                        {/* Header */}
+                        <div className="flex justify-between items-end">
+                            <div className="space-y-1">
+                                <h2 className="text-3xl font-bold text-white tracking-tight">文档管理</h2>
+                                <p className="text-white/40 text-sm">上传并管理需求文档、API 规范等，AI 自动解析提取需求</p>
+                            </div>
+                            <button
+                                onClick={() => setShowUploadModal(true)}
+                                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20"
+                            >
+                                <Lucide name="Upload" size={16} /> 上传文档
+                            </button>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+                                        <Lucide name="FileText" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">文档总数</span>
+                                </div>
+                                <div className="text-2xl font-bold text-white">{stats.total}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                                        <Lucide name="CheckCircle2" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">已解析</span>
+                                </div>
+                                <div className="text-2xl font-bold text-emerald-400">{stats.parsed}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400">
+                                        <Lucide name="Loader2" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">解析中</span>
+                                </div>
+                                <div className="text-2xl font-bold text-amber-400">{stats.parsing}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-rose-500/10 rounded-lg text-rose-400">
+                                        <Lucide name="AlertTriangle" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">失败</span>
+                                </div>
+                                <div className="text-2xl font-bold text-rose-400">{stats.failed}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                                        <Lucide name="Zap" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">提取需求</span>
+                                </div>
+                                <div className="text-2xl font-bold text-purple-400">{stats.requirements}</div>
+                            </div>
+                        </div>
+
+                        {/* Filters & View Toggle */}
+                        <div className="flex items-center justify-between gap-4 bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                            <div className="flex items-center gap-3">
+                                {/* Type Filter */}
+                                <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                                    {[
+                                        { id: 'all', label: '全部' },
+                                        { id: 'prd', label: 'PRD' },
+                                        { id: 'api', label: 'API' },
+                                        { id: 'doc', label: '文档' },
+                                    ].map(filter => (
+                                        <button
+                                            key={filter.id}
+                                            onClick={() => setFilterType(filter.id)}
+                                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                                filterType === filter.id ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
+                                            }`}
+                                        >
+                                            {filter.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {/* Search */}
+                                <div className="relative w-64">
+                                    <Lucide name="Search" size={14} className="absolute left-3 top-2.5 text-white/30" />
+                                    <input
+                                        type="text"
+                                        placeholder="搜索文档..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full bg-black/50 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50"
+                                    />
+                                </div>
+                                {/* View Toggle */}
+                                <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
+                                    >
+                                        <Lucide name="Grid" size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('list')}
+                                        className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
+                                    >
+                                        <Lucide name="List" size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Documents Grid/List */}
+                        {viewMode === 'grid' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filteredDocs.map(doc => (
+                                    <DocumentCard key={doc.id} doc={doc} viewMode={viewMode} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {filteredDocs.map(doc => (
+                                    <DocumentCard key={doc.id} doc={doc} viewMode={viewMode} />
+                                ))}
+                            </div>
+                        )}
+
+                        {filteredDocs.length === 0 && (
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-16 text-center">
+                                <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <Lucide name="Search" size={32} className="text-white/20" />
+                                </div>
+                                <div className="text-white/40 text-sm">没有找到匹配的文档</div>
+                            </div>
+                        )}
+
+                        {/* Upload Modal */}
+                        {showUploadModal && (
+                            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+                                <div className="bg-[#0F0F0F] border border-white/10 rounded-2xl p-8 w-full max-w-lg">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-xl font-bold text-white">上传文档</h3>
+                                        <button
+                                            onClick={() => setShowUploadModal(false)}
+                                            className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors"
+                                        >
+                                            <Lucide name="X" size={20} />
+                                        </button>
+                                    </div>
+                                    <div
+                                        className={`drop-zone rounded-xl p-12 text-center cursor-pointer ${isDragging ? 'dragging' : ''}`}
+                                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                        onDragLeave={() => setIsDragging(false)}
+                                        onDrop={() => setIsDragging(false)}
+                                    >
+                                        <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                            <Lucide name="Upload" size={32} className="text-indigo-400" />
+                                        </div>
+                                        <div className="text-white font-bold mb-2">拖拽文件到此处</div>
+                                        <div className="text-sm text-white/40 mb-4">或点击选择文件</div>
+                                        <div className="text-xs text-white/30">支持 PDF、Markdown、YAML、Word 格式</div>
+                                    </div>
+                                    <div className="mt-6 flex items-center gap-3">
+                                        <button
+                                            onClick={() => setShowUploadModal(false)}
+                                            className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl text-sm font-medium transition-colors"
+                                        >
+                                            取消
+                                        </button>
+                                        <button className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-colors">
+                                            上传并解析
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DocumentsView />);
+    </script>
+</body>
+
+</html>

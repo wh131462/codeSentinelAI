@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSentinel - 需求映射</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            background-color: #000;
+            color: #e2e8f0;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .connection-line {
+            stroke-dasharray: 5, 5;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -100; }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- Icons ---
+        const Icons = {
+            Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />,
+            FileText: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
+            Code: <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>,
+            GitMerge: <><circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M6 21V9a9 9 0 0 0 9 9" /></>,
+            CheckCircle2: <><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></>,
+            AlertTriangle: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" x2="12" y1="9" y2="13" /><line x1="12" x2="12.01" y1="17" y2="17" /></>,
+            Search: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>,
+            ChevronRight: <path d="m9 18 6-6-6-6" />,
+            ChevronDown: <path d="m6 9 6 6 6-6" />,
+            Link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
+            Unlink: <><path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71" /><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71" /><line x1="8" x2="8" y1="2" y2="5" /><line x1="2" x2="5" y1="8" y2="8" /><line x1="16" x2="16" y1="19" y2="22" /><line x1="19" x2="22" y1="16" y2="16" /></>,
+            Layers: <><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></>,
+            Eye: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>,
+            Target: <><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>,
+            Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+            BarChart: <><line x1="12" x2="12" y1="20" y2="10" /><line x1="18" x2="18" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="16" /></>,
+            Filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
+            Plus: <><path d="M5 12h14" /><path d="M12 5v14" /></>,
+            X: <path d="M18 6 6 18M6 6l12 12" />,
+            ArrowRight: <><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>,
+            RefreshCw: <><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></>,
+            Clock: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
+        };
+
+        const Lucide = ({ name, className, size = 16 }) => {
+            const icon = Icons[name];
+            return icon ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icon}
+                </svg>
+            ) : null;
+        };
+
+        // --- Navbar ---
+        const Navbar = ({ active }) => (
+            <nav className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0A0A0A]/80 backdrop-blur-md sticky top-0 z-50">
+                <div className="flex items-center gap-8">
+                    <a href="index.html" className="flex items-center gap-3 group">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                            <Lucide name="Shield" className="text-white" size={20} />
+                        </div>
+                        <span className="font-bold text-xl tracking-tight text-white group-hover:text-white/90 transition-colors">
+                            CodeSentinel <span className="text-indigo-400 text-xs ml-1 font-normal bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Ent</span>
+                        </span>
+                    </a>
+                    <div className="hidden md:flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                        {[
+                            { id: 'overview', label: '仪表盘', href: 'overview.html' },
+                            { id: 'workspace', label: '工作台', href: 'workspace.html' },
+                            { id: 'mapping', label: '需求映射', href: 'mapping.html' },
+                            { id: 'pipeline', label: '流水线', href: 'pipeline.html' },
+                            { id: 'configuration', label: '仓库配置', href: 'configuration.html' }
+                        ].map((item) => (
+                            <a key={item.id} href={item.href} className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${active === item.id ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}>
+                                {item.label}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 pl-4">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs font-medium text-white">张三 (Dev)</span>
+                            <span className="text-[10px] text-white/40">GitLab Pro</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-[1px]">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" className="w-full h-full rounded-full bg-black" />
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        );
+
+        // --- Mock Data ---
+        const DOCUMENTS = [
+            { id: '1', name: 'PRD-2024-001_电商核心交易流程.pdf', version: 'v2.1', score: 92, requirements: 24, mapped: 21, lastSync: '10 分钟前' },
+            { id: '2', name: 'PRD-2024-002_用户中心需求规格.pdf', version: 'v1.5', score: 85, requirements: 18, mapped: 15, lastSync: '2 小时前' },
+            { id: '3', name: 'API_Spec_支付网关_v3.0.yaml', version: 'v3.0', score: 78, requirements: 32, mapped: 22, lastSync: '1 天前' },
+        ];
+
+        const REQUIREMENTS = [
+            {
+                id: 'REQ-001',
+                title: 'Level 1 用户运费计算',
+                description: 'Level 1 用户下单时，固定收取 10 元运费',
+                priority: 'P0',
+                status: 'mapped',
+                coverage: 100,
+                mappedCode: [
+                    { file: 'ShippingCalculator.java', line: '15-20', method: 'calculate()', confidence: 98 },
+                    { file: 'ShippingCalculatorTest.java', line: '45-60', method: 'test_level1_shipping()', confidence: 95 }
+                ],
+                testCases: 3,
+                lastVerified: '5 分钟前'
+            },
+            {
+                id: 'REQ-002',
+                title: 'Level 2 用户满减运费',
+                description: 'Level 2 用户订单金额超过 100 元时，运费减半（7.5元）',
+                priority: 'P0',
+                status: 'partial',
+                coverage: 65,
+                mappedCode: [
+                    { file: 'ShippingCalculator.java', line: '22-35', method: 'calculate()', confidence: 72, issue: '逻辑不完整' }
+                ],
+                testCases: 2,
+                lastVerified: '30 分钟前',
+                issues: ['缺少边界条件处理', '未覆盖金额等于100的场景']
+            },
+            {
+                id: 'REQ-003',
+                title: 'Level 3+ 用户免运费',
+                description: 'Level 3 及以上用户享受全场免运费',
+                priority: 'P1',
+                status: 'mapped',
+                coverage: 100,
+                mappedCode: [
+                    { file: 'ShippingCalculator.java', line: '37-42', method: 'calculate()', confidence: 99 },
+                    { file: 'ShippingCalculatorTest.java', line: '78-95', method: 'test_level3_free()', confidence: 97 }
+                ],
+                testCases: 4,
+                lastVerified: '1 小时前'
+            },
+            {
+                id: 'REQ-004',
+                title: '默认运费兜底逻辑',
+                description: '未匹配任何规则时，收取默认运费 15 元',
+                priority: 'P2',
+                status: 'mapped',
+                coverage: 85,
+                mappedCode: [
+                    { file: 'ShippingCalculator.java', line: '44-48', method: 'calculate()', confidence: 90 }
+                ],
+                testCases: 2,
+                lastVerified: '2 小时前'
+            },
+            {
+                id: 'REQ-005',
+                title: '订单金额统计接口',
+                description: '提供订单金额汇总 API，支持按时间范围查询',
+                priority: 'P1',
+                status: 'unmapped',
+                coverage: 0,
+                mappedCode: [],
+                testCases: 0,
+                lastVerified: null,
+                issues: ['未找到对应代码实现']
+            },
+            {
+                id: 'REQ-006',
+                title: '运费计算异常处理',
+                description: '当用户信息缺失或订单数据异常时，返回标准错误码',
+                priority: 'P0',
+                status: 'partial',
+                coverage: 40,
+                mappedCode: [
+                    { file: 'ShippingCalculator.java', line: '8-12', method: 'validate()', confidence: 55, issue: '异常类型不完整' }
+                ],
+                testCases: 1,
+                lastVerified: '3 小时前',
+                issues: ['缺少空指针异常处理', '错误码未与文档对齐']
+            }
+        ];
+
+        const ORPHAN_CODE = [
+            { file: 'ShippingCalculator.java', line: '50-65', method: 'calculateBulkDiscount()', reason: '未关联任何需求' },
+            { file: 'OrderService.java', line: '120-145', method: 'applyLegacyPromotion()', reason: '疑似废弃代码' },
+            { file: 'UserLevelHelper.java', line: '88-102', method: 'getSpecialDiscount()', reason: '需求文档中未提及' }
+        ];
+
+        // --- Components ---
+        const StatusBadge = ({ status }) => {
+            const config = {
+                mapped: { label: '已映射', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: 'CheckCircle2' },
+                partial: { label: '部分映射', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: 'AlertTriangle' },
+                unmapped: { label: '未映射', color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', icon: 'Unlink' }
+            };
+            const { label, color, bg, border, icon } = config[status] || config.unmapped;
+            return (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${bg} ${color} ${border} border rounded-full text-xs font-bold`}>
+                    <Lucide name={icon} size={12} />
+                    {label}
+                </span>
+            );
+        };
+
+        const CoverageBar = ({ coverage }) => {
+            const color = coverage >= 80 ? 'bg-emerald-500' : coverage >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+            return (
+                <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${coverage}%` }} />
+                    </div>
+                    <span className={`text-xs font-bold w-10 text-right ${coverage >= 80 ? 'text-emerald-400' : coverage >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                        {coverage}%
+                    </span>
+                </div>
+            );
+        };
+
+        const RequirementCard = ({ requirement, isExpanded, onToggle }) => {
+            return (
+                <div className={`bg-[#0F0F0F] border rounded-xl overflow-hidden transition-all ${
+                    requirement.status === 'unmapped' ? 'border-rose-500/30' :
+                    requirement.status === 'partial' ? 'border-amber-500/30' :
+                    'border-white/5 hover:border-white/10'
+                }`}>
+                    <div
+                        className="p-5 cursor-pointer"
+                        onClick={onToggle}
+                    >
+                        <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs font-mono text-white/40 bg-white/5 px-2 py-1 rounded">{requirement.id}</span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                    requirement.priority === 'P0' ? 'bg-rose-500/20 text-rose-400' :
+                                    requirement.priority === 'P1' ? 'bg-amber-500/20 text-amber-400' :
+                                    'bg-white/10 text-white/40'
+                                }`}>{requirement.priority}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <StatusBadge status={requirement.status} />
+                                <Lucide
+                                    name={isExpanded ? 'ChevronDown' : 'ChevronRight'}
+                                    size={16}
+                                    className="text-white/30"
+                                />
+                            </div>
+                        </div>
+                        <h4 className="text-white font-bold mb-2">{requirement.title}</h4>
+                        <p className="text-sm text-white/50 mb-4">{requirement.description}</p>
+                        <div className="flex items-center gap-6">
+                            <div className="flex-1">
+                                <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">代码覆盖率</div>
+                                <CoverageBar coverage={requirement.coverage} />
+                            </div>
+                            <div className="text-center">
+                                <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">测试用例</div>
+                                <div className="text-lg font-bold text-white">{requirement.testCases}</div>
+                            </div>
+                            {requirement.lastVerified && (
+                                <div className="text-right">
+                                    <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1">最后验证</div>
+                                    <div className="text-xs text-white/60">{requirement.lastVerified}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {isExpanded && (
+                        <div className="border-t border-white/5 bg-black/30 p-5 slide-in">
+                            {/* Mapped Code */}
+                            {requirement.mappedCode.length > 0 && (
+                                <div className="mb-6">
+                                    <h5 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                        <Lucide name="Link" size={12} className="text-indigo-400" />
+                                        关联代码
+                                    </h5>
+                                    <div className="space-y-2">
+                                        {requirement.mappedCode.map((code, idx) => (
+                                            <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${
+                                                code.issue ? 'bg-amber-500/5 border-amber-500/20' : 'bg-white/[0.02] border-white/5'
+                                            }`}>
+                                                <div className="flex items-center gap-3">
+                                                    <Lucide name="Code" size={14} className="text-indigo-400" />
+                                                    <div>
+                                                        <span className="font-mono text-sm text-white">{code.file}</span>
+                                                        <span className="text-white/30 mx-2">:</span>
+                                                        <span className="font-mono text-sm text-white/60">{code.line}</span>
+                                                    </div>
+                                                    <span className="text-xs text-white/40 bg-white/5 px-2 py-0.5 rounded">{code.method}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    {code.issue && (
+                                                        <span className="text-xs text-amber-400 flex items-center gap-1">
+                                                            <Lucide name="AlertTriangle" size={12} />
+                                                            {code.issue}
+                                                        </span>
+                                                    )}
+                                                    <span className={`text-xs font-bold ${
+                                                        code.confidence >= 90 ? 'text-emerald-400' :
+                                                        code.confidence >= 70 ? 'text-amber-400' : 'text-rose-400'
+                                                    }`}>
+                                                        {code.confidence}% 置信度
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Issues */}
+                            {requirement.issues && requirement.issues.length > 0 && (
+                                <div className="mb-4">
+                                    <h5 className="text-xs font-bold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                        <Lucide name="AlertTriangle" size={12} className="text-rose-400" />
+                                        发现问题
+                                    </h5>
+                                    <div className="space-y-2">
+                                        {requirement.issues.map((issue, idx) => (
+                                            <div key={idx} className="flex items-center gap-2 text-sm text-rose-300 bg-rose-500/10 px-3 py-2 rounded-lg border border-rose-500/20">
+                                                <Lucide name="X" size={12} />
+                                                {issue}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-3 pt-4 border-t border-white/5">
+                                <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-colors">
+                                    <Lucide name="Eye" size={12} /> 查看代码
+                                </button>
+                                <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors">
+                                    <Lucide name="RefreshCw" size={12} /> 重新分析
+                                </button>
+                                {requirement.status !== 'mapped' && (
+                                    <button className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors">
+                                        <Lucide name="Zap" size={12} /> AI 补全
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- Main View ---
+        const MappingView = () => {
+            const [selectedDoc, setSelectedDoc] = useState(DOCUMENTS[0]);
+            const [expandedReq, setExpandedReq] = useState(null);
+            const [filterStatus, setFilterStatus] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [showOrphanCode, setShowOrphanCode] = useState(false);
+
+            const filteredRequirements = REQUIREMENTS.filter(req => {
+                if (filterStatus !== 'all' && req.status !== filterStatus) return false;
+                if (searchQuery && !req.title.toLowerCase().includes(searchQuery.toLowerCase()) && !req.id.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+                return true;
+            });
+
+            const stats = {
+                total: REQUIREMENTS.length,
+                mapped: REQUIREMENTS.filter(r => r.status === 'mapped').length,
+                partial: REQUIREMENTS.filter(r => r.status === 'partial').length,
+                unmapped: REQUIREMENTS.filter(r => r.status === 'unmapped').length,
+                avgCoverage: Math.round(REQUIREMENTS.reduce((sum, r) => sum + r.coverage, 0) / REQUIREMENTS.length)
+            };
+
+            return (
+                <div className="min-h-screen bg-black text-slate-200">
+                    <Navbar active="mapping" />
+                    <div className="max-w-[1600px] mx-auto px-6 py-8 space-y-6 fade-in">
+                        {/* Header */}
+                        <div className="flex justify-between items-end">
+                            <div className="space-y-1">
+                                <h2 className="text-3xl font-bold text-white tracking-tight">需求-代码映射</h2>
+                                <p className="text-white/40 text-sm">AI 自动追踪需求与代码的关联关系，确保实现与文档一致</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white/60 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors border border-white/5">
+                                    <Lucide name="RefreshCw" size={16} /> 重新分析
+                                </button>
+                                <button className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20">
+                                    <Lucide name="Plus" size={16} /> 导入文档
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Document Selector */}
+                        <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <Lucide name="FileText" size={20} className="text-indigo-400" />
+                                    需求文档
+                                </h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {DOCUMENTS.map(doc => (
+                                    <div
+                                        key={doc.id}
+                                        onClick={() => setSelectedDoc(doc)}
+                                        className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                                            selectedDoc.id === doc.id
+                                                ? 'bg-indigo-500/10 border-indigo-500/30'
+                                                : 'bg-black/30 border-white/5 hover:border-white/10'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Lucide name="FileText" size={16} className={selectedDoc.id === doc.id ? 'text-indigo-400' : 'text-white/40'} />
+                                                <span className="text-xs text-white/40 bg-white/5 px-2 py-0.5 rounded">{doc.version}</span>
+                                            </div>
+                                            <div className={`text-lg font-bold ${
+                                                doc.score >= 90 ? 'text-emerald-400' :
+                                                doc.score >= 70 ? 'text-amber-400' : 'text-rose-400'
+                                            }`}>
+                                                {doc.score}
+                                            </div>
+                                        </div>
+                                        <h4 className="text-sm font-medium text-white mb-2 truncate">{doc.name}</h4>
+                                        <div className="flex items-center justify-between text-xs text-white/40">
+                                            <span>{doc.mapped}/{doc.requirements} 已映射</span>
+                                            <span className="flex items-center gap-1">
+                                                <Lucide name="Clock" size={10} />
+                                                {doc.lastSync}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+                                        <Lucide name="Target" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">需求总数</span>
+                                </div>
+                                <div className="text-2xl font-bold text-white">{stats.total}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                                        <Lucide name="CheckCircle2" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">完全映射</span>
+                                </div>
+                                <div className="text-2xl font-bold text-emerald-400">{stats.mapped}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-amber-500/10 rounded-lg text-amber-400">
+                                        <Lucide name="AlertTriangle" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">部分映射</span>
+                                </div>
+                                <div className="text-2xl font-bold text-amber-400">{stats.partial}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-rose-500/10 rounded-lg text-rose-400">
+                                        <Lucide name="Unlink" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">未映射</span>
+                                </div>
+                                <div className="text-2xl font-bold text-rose-400">{stats.unmapped}</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                                        <Lucide name="Activity" size={18} />
+                                    </div>
+                                    <span className="text-xs text-white/40 uppercase tracking-wider">平均覆盖</span>
+                                </div>
+                                <div className="text-2xl font-bold text-purple-400">{stats.avgCoverage}%</div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            {/* Requirements List */}
+                            <div className="lg:col-span-8 space-y-4">
+                                {/* Filters */}
+                                <div className="flex items-center justify-between gap-4 bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                                            {[
+                                                { id: 'all', label: '全部' },
+                                                { id: 'mapped', label: '已映射' },
+                                                { id: 'partial', label: '部分' },
+                                                { id: 'unmapped', label: '未映射' },
+                                            ].map(filter => (
+                                                <button
+                                                    key={filter.id}
+                                                    onClick={() => setFilterStatus(filter.id)}
+                                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                                        filterStatus === filter.id ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
+                                                    }`}
+                                                >
+                                                    {filter.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="relative w-64">
+                                        <Lucide name="Search" size={14} className="absolute left-3 top-2.5 text-white/30" />
+                                        <input
+                                            type="text"
+                                            placeholder="搜索需求..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full bg-black/50 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Requirements */}
+                                <div className="space-y-4">
+                                    {filteredRequirements.map(req => (
+                                        <RequirementCard
+                                            key={req.id}
+                                            requirement={req}
+                                            isExpanded={expandedReq === req.id}
+                                            onToggle={() => setExpandedReq(expandedReq === req.id ? null : req.id)}
+                                        />
+                                    ))}
+                                </div>
+
+                                {filteredRequirements.length === 0 && (
+                                    <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-16 text-center">
+                                        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                            <Lucide name="Search" size={32} className="text-white/20" />
+                                        </div>
+                                        <div className="text-white/40 text-sm">没有找到匹配的需求</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sidebar */}
+                            <div className="lg:col-span-4 space-y-4">
+                                {/* Orphan Code Panel */}
+                                <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl overflow-hidden">
+                                    <div
+                                        className="p-5 border-b border-white/5 cursor-pointer flex items-center justify-between"
+                                        onClick={() => setShowOrphanCode(!showOrphanCode)}
+                                    >
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <Lucide name="Unlink" size={20} className="text-rose-400" />
+                                            孤立代码检测
+                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-rose-400 bg-rose-500/10 px-2 py-1 rounded-full font-bold">
+                                                {ORPHAN_CODE.length}
+                                            </span>
+                                            <Lucide name={showOrphanCode ? 'ChevronDown' : 'ChevronRight'} size={16} className="text-white/30" />
+                                        </div>
+                                    </div>
+                                    {showOrphanCode && (
+                                        <div className="p-5 space-y-3 max-h-80 overflow-y-auto scrollbar-thin">
+                                            {ORPHAN_CODE.map((code, idx) => (
+                                                <div key={idx} className="p-3 bg-rose-500/5 border border-rose-500/20 rounded-lg">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Lucide name="Code" size={12} className="text-rose-400" />
+                                                        <span className="font-mono text-sm text-white">{code.file}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-white/40">行 {code.line} · {code.method}</span>
+                                                    </div>
+                                                    <div className="mt-2 text-xs text-rose-300/80">{code.reason}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Quick Actions */}
+                                <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl p-5">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+                                        <Lucide name="Zap" size={20} className="text-amber-400" />
+                                        快捷操作
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <button className="w-full px-4 py-3 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors">
+                                            <Lucide name="RefreshCw" size={16} />
+                                            全量重新映射
+                                        </button>
+                                        <button className="w-full px-4 py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded-xl text-sm font-bold flex items-center gap-3 transition-colors">
+                                            <Lucide name="Zap" size={16} />
+                                            AI 补全未映射需求
+                                        </button>
+                                        <button className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 text-white/60 border border-white/5 rounded-xl text-sm font-medium flex items-center gap-3 transition-colors">
+                                            <Lucide name="BarChart" size={16} />
+                                            导出映射报告
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Coverage Trend */}
+                                <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl p-5">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+                                        <Lucide name="Activity" size={20} className="text-purple-400" />
+                                        覆盖率趋势
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {['本周', '上周', '两周前'].map((period, idx) => (
+                                            <div key={idx} className="flex items-center justify-between">
+                                                <span className="text-xs text-white/40">{period}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-32 h-2 bg-white/10 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                                                            style={{ width: `${[78, 72, 65][idx]}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-xs font-bold text-white/60 w-10 text-right">
+                                                        {[78, 72, 65][idx]}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MappingView />);
+    </script>
+</body>
+
+</html>

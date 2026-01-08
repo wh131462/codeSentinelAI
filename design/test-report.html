@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSentinel - 测试报告</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            background-color: #000;
+            color: #e2e8f0;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // --- Icons ---
+        const Icons = {
+            Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />,
+            TestTube: <><path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5h0c-1.4 0-2.5-1.1-2.5-2.5V2" /><path d="M8.5 2h7" /><path d="M14.5 16h-5" /></>,
+            CheckCircle2: <><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></>,
+            XCircle: <><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></>,
+            AlertTriangle: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" x2="12" y1="9" y2="13" /><line x1="12" x2="12.01" y1="17" y2="17" /></>,
+            ArrowLeft: <><path d="m12 19-7-7 7-7" /><path d="M19 12H5" /></>,
+            ChevronRight: <path d="m9 18 6-6-6-6" />,
+            ChevronDown: <path d="m6 9 6 6 6-6" />,
+            Clock: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
+            Code: <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>,
+            GitMerge: <><circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M6 21V9a9 9 0 0 0 9 9" /></>,
+            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+            BarChart: <><line x1="12" x2="12" y1="20" y2="10" /><line x1="18" x2="18" y1="20" y2="4" /><line x1="6" x2="6" y1="20" y2="16" /></>,
+            Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></>,
+            Share2: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" x2="15.42" y1="13.51" y2="17.49" /><line x1="15.41" x2="8.59" y1="6.51" y2="10.49" /></>,
+            Eye: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>,
+            Bug: <><path d="m8 2 1.88 1.88" /><path d="M14.12 3.88 16 2" /><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" /><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" /><path d="M12 20v-9" /><path d="M6.53 9C4.6 8.8 3 7.1 3 5" /><path d="M6 13H2" /><path d="M3 21c0-2.1 1.7-3.9 3.8-4" /><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" /><path d="M22 13h-4" /><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" /></>,
+            Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+            RotateCcw: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12" /><path d="M3 3v9h9" /></>,
+            FileText: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
+            Terminal: <><polyline points="4 17 10 11 4 5" /><line x1="12" x2="20" y1="19" y2="19" /></>,
+            Play: <polygon points="5 3 19 12 5 21 5 3" />,
+            Layers: <><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></>,
+            Filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
+            Search: <><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></>,
+            User: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
+            Copy: <><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></>,
+        };
+
+        const Lucide = ({ name, className, size = 16 }) => {
+            const icon = Icons[name];
+            return icon ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icon}
+                </svg>
+            ) : null;
+        };
+
+        // --- Navbar ---
+        const Navbar = ({ active }) => (
+            <nav className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0A0A0A]/80 backdrop-blur-md sticky top-0 z-50">
+                <div className="flex items-center gap-8">
+                    <a href="index.html" className="flex items-center gap-3 group">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                            <Lucide name="Shield" className="text-white" size={20} />
+                        </div>
+                        <span className="font-bold text-xl tracking-tight text-white group-hover:text-white/90 transition-colors">
+                            CodeSentinel <span className="text-indigo-400 text-xs ml-1 font-normal bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Ent</span>
+                        </span>
+                    </a>
+                    <div className="hidden md:flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                        {[
+                            { id: 'overview', label: '仪表盘', href: 'overview.html' },
+                            { id: 'workspace', label: '工作台', href: 'workspace.html' },
+                            { id: 'mapping', label: '需求映射', href: 'mapping.html' },
+                            { id: 'pipeline', label: '流水线', href: 'pipeline.html' },
+                            { id: 'configuration', label: '仓库配置', href: 'configuration.html' }
+                        ].map((item) => (
+                            <a key={item.id} href={item.href} className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${active === item.id ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}>
+                                {item.label}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 pl-4">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs font-medium text-white">张三 (QA)</span>
+                            <span className="text-[10px] text-white/40">测试工程师</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-[1px]">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=QA" alt="User" className="w-full h-full rounded-full bg-black" />
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        );
+
+        // --- Mock Data ---
+        const REPORT_DATA = {
+            id: 'TR-2024-0118-001',
+            pipelineId: '#2847',
+            branch: 'feat/shipping-logic',
+            commit: 'a1b2c3d',
+            commitMsg: 'fix: 修复Level 2用户运费计算逻辑',
+            project: '电商核心交易系统',
+            triggeredBy: '张三',
+            triggeredAt: '2024-01-18 14:32:15',
+            duration: '3m 42s',
+            status: 'passed',
+            summary: {
+                total: 12,
+                passed: 12,
+                failed: 0,
+                skipped: 0,
+                coverage: 92.5,
+                aiGenerated: 8,
+                manualAdded: 4
+            }
+        };
+
+        const TEST_SUITES = [
+            {
+                id: 'suite-1',
+                name: 'ShippingCalculatorTest',
+                file: 'src/test/java/com/corp/shipping/ShippingCalculatorTest.java',
+                status: 'passed',
+                duration: '1.24s',
+                tests: [
+                    {
+                        id: 'test-1',
+                        name: 'test_level1_shipping_fixed_fee',
+                        status: 'passed',
+                        duration: '0.12s',
+                        description: '验证Level 1用户固定运费10元',
+                        requirement: 'REQ-001',
+                        source: 'ai',
+                        assertions: [
+                            { expected: '10.00', actual: '10.00', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-2',
+                        name: 'test_level2_shipping_discount',
+                        status: 'passed',
+                        duration: '0.08s',
+                        description: '验证Level 2用户满100减50%运费',
+                        requirement: 'REQ-002',
+                        source: 'ai',
+                        assertions: [
+                            { expected: '7.50', actual: '7.50', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-3',
+                        name: 'test_level2_below_threshold',
+                        status: 'passed',
+                        duration: '0.05s',
+                        description: '验证Level 2用户未满100保持15元',
+                        requirement: 'REQ-002',
+                        source: 'ai',
+                        assertions: [
+                            { expected: '15.00', actual: '15.00', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-4',
+                        name: 'test_level3_free_shipping',
+                        status: 'passed',
+                        duration: '0.03s',
+                        description: '验证Level 3+用户免运费',
+                        requirement: 'REQ-003',
+                        source: 'ai',
+                        assertions: [
+                            { expected: '0.00', actual: '0.00', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-5',
+                        name: 'test_default_shipping_fee',
+                        status: 'passed',
+                        duration: '0.04s',
+                        description: '验证默认运费兜底逻辑',
+                        requirement: 'REQ-004',
+                        source: 'manual',
+                        assertions: [
+                            { expected: '15.00', actual: '15.00', passed: true }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'suite-2',
+                name: 'ShippingExceptionTest',
+                file: 'src/test/java/com/corp/shipping/ShippingExceptionTest.java',
+                status: 'passed',
+                duration: '0.85s',
+                tests: [
+                    {
+                        id: 'test-6',
+                        name: 'test_null_user_throws_exception',
+                        status: 'passed',
+                        duration: '0.15s',
+                        description: '验证空用户抛出异常',
+                        requirement: 'REQ-006',
+                        source: 'ai',
+                        assertions: [
+                            { expected: 'IllegalArgumentException', actual: 'IllegalArgumentException', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-7',
+                        name: 'test_null_order_throws_exception',
+                        status: 'passed',
+                        duration: '0.10s',
+                        description: '验证空订单抛出异常',
+                        requirement: 'REQ-006',
+                        source: 'ai',
+                        assertions: [
+                            { expected: 'IllegalArgumentException', actual: 'IllegalArgumentException', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-8',
+                        name: 'test_negative_amount_throws_exception',
+                        status: 'passed',
+                        duration: '0.08s',
+                        description: '验证负数金额抛出异常',
+                        requirement: 'REQ-006',
+                        source: 'manual',
+                        assertions: [
+                            { expected: 'IllegalArgumentException', actual: 'IllegalArgumentException', passed: true }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'suite-3',
+                name: 'ShippingBoundaryTest',
+                file: 'src/test/java/com/corp/shipping/ShippingBoundaryTest.java',
+                status: 'passed',
+                duration: '0.62s',
+                tests: [
+                    {
+                        id: 'test-9',
+                        name: 'test_boundary_amount_100',
+                        status: 'passed',
+                        duration: '0.12s',
+                        description: '验证金额正好100的边界情况',
+                        requirement: 'REQ-002',
+                        source: 'ai',
+                        assertions: [
+                            { expected: '15.00', actual: '15.00', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-10',
+                        name: 'test_boundary_amount_100_01',
+                        status: 'passed',
+                        duration: '0.10s',
+                        description: '验证金额100.01的边界情况',
+                        requirement: 'REQ-002',
+                        source: 'ai',
+                        assertions: [
+                            { expected: '7.50', actual: '7.50', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-11',
+                        name: 'test_large_amount',
+                        status: 'passed',
+                        duration: '0.08s',
+                        description: '验证大额订单运费计算',
+                        requirement: 'REQ-002',
+                        source: 'manual',
+                        assertions: [
+                            { expected: '7.50', actual: '7.50', passed: true }
+                        ]
+                    },
+                    {
+                        id: 'test-12',
+                        name: 'test_zero_amount',
+                        status: 'passed',
+                        duration: '0.06s',
+                        description: '验证零金额订单运费',
+                        requirement: 'REQ-004',
+                        source: 'manual',
+                        assertions: [
+                            { expected: '15.00', actual: '15.00', passed: true }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        const COVERAGE_DATA = {
+            overall: 92.5,
+            files: [
+                { file: 'ShippingCalculator.java', coverage: 95.2, lines: { covered: 42, total: 44 } },
+                { file: 'ShippingValidator.java', coverage: 88.5, lines: { covered: 23, total: 26 } },
+                { file: 'ShippingConfig.java', coverage: 100, lines: { covered: 15, total: 15 } },
+            ]
+        };
+
+        // --- Components ---
+        const StatusIcon = ({ status, size = 16 }) => {
+            if (status === 'passed') return <Lucide name="CheckCircle2" size={size} className="text-emerald-400" />;
+            if (status === 'failed') return <Lucide name="XCircle" size={size} className="text-rose-400" />;
+            if (status === 'skipped') return <Lucide name="AlertTriangle" size={size} className="text-amber-400" />;
+            return null;
+        };
+
+        const TestSuiteCard = ({ suite, isExpanded, onToggle }) => {
+            const passedCount = suite.tests.filter(t => t.status === 'passed').length;
+            const failedCount = suite.tests.filter(t => t.status === 'failed').length;
+
+            return (
+                <div className={`bg-[#0F0F0F] border rounded-xl overflow-hidden transition-all ${
+                    suite.status === 'failed' ? 'border-rose-500/30' : 'border-white/5 hover:border-white/10'
+                }`}>
+                    <div className="p-5 cursor-pointer" onClick={onToggle}>
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                                <StatusIcon status={suite.status} size={20} />
+                                <h4 className="text-white font-bold">{suite.name}</h4>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-emerald-400">{passedCount} 通过</span>
+                                    {failedCount > 0 && <span className="text-rose-400">{failedCount} 失败</span>}
+                                </div>
+                                <span className="text-xs text-white/40 font-mono">{suite.duration}</span>
+                                <Lucide name={isExpanded ? 'ChevronDown' : 'ChevronRight'} size={16} className="text-white/30" />
+                            </div>
+                        </div>
+                        <div className="text-xs text-white/40 font-mono truncate">{suite.file}</div>
+                    </div>
+
+                    {isExpanded && (
+                        <div className="border-t border-white/5">
+                            {suite.tests.map((test, idx) => (
+                                <div key={test.id} className={`p-4 ${idx > 0 ? 'border-t border-white/5' : ''} hover:bg-white/[0.02]`}>
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-start gap-3">
+                                            <StatusIcon status={test.status} size={16} />
+                                            <div>
+                                                <div className="font-mono text-sm text-white mb-1">{test.name}</div>
+                                                <div className="text-xs text-white/50">{test.description}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-[10px] px-2 py-0.5 rounded ${
+                                                test.source === 'ai' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/10 text-white/40'
+                                            }`}>
+                                                {test.source === 'ai' ? 'AI 生成' : '手动添加'}
+                                            </span>
+                                            <span className="text-xs text-white/30 font-mono">{test.duration}</span>
+                                        </div>
+                                    </div>
+                                    {test.assertions && (
+                                        <div className="ml-7 mt-3 space-y-1">
+                                            {test.assertions.map((assertion, aIdx) => (
+                                                <div key={aIdx} className={`text-xs font-mono p-2 rounded ${
+                                                    assertion.passed ? 'bg-emerald-500/10 text-emerald-300' : 'bg-rose-500/10 text-rose-300'
+                                                }`}>
+                                                    期望: {assertion.expected} → 实际: {assertion.actual}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {test.requirement && (
+                                        <div className="ml-7 mt-2">
+                                            <a href="mapping.html" className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                                                <Lucide name="FileText" size={10} />
+                                                关联需求: {test.requirement}
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- Main View ---
+        const TestReportView = () => {
+            const [expandedSuite, setExpandedSuite] = useState('suite-1');
+            const [activeTab, setActiveTab] = useState('tests');
+            const [filterStatus, setFilterStatus] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+
+            const filteredSuites = TEST_SUITES.map(suite => ({
+                ...suite,
+                tests: suite.tests.filter(test => {
+                    if (filterStatus !== 'all' && test.status !== filterStatus) return false;
+                    if (searchQuery && !test.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+                    return true;
+                })
+            })).filter(suite => suite.tests.length > 0);
+
+            return (
+                <div className="min-h-screen bg-black text-slate-200">
+                    <Navbar active="pipeline" />
+                    <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-6 fade-in">
+                        {/* Header */}
+                        <div className="flex items-center gap-4 mb-6">
+                            <a href="pipeline.html" className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors">
+                                <Lucide name="ArrowLeft" size={16} /> 返回流水线
+                            </a>
+                        </div>
+
+                        {/* Report Header */}
+                        <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl p-6">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-6">
+                                    <div className={`p-4 rounded-2xl ${
+                                        REPORT_DATA.status === 'passed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                                    }`}>
+                                        <Lucide name="TestTube" size={32} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <h1 className="text-2xl font-bold text-white">测试报告</h1>
+                                            <span className="text-xs bg-white/5 text-white/60 px-2 py-1 rounded border border-white/10 font-mono">{REPORT_DATA.id}</span>
+                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                REPORT_DATA.status === 'passed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                            }`}>
+                                                {REPORT_DATA.status === 'passed' ? '全部通过' : '存在失败'}
+                                            </span>
+                                        </div>
+                                        <p className="text-white/60 mb-3">{REPORT_DATA.commitMsg}</p>
+                                        <div className="flex items-center gap-4 text-sm text-white/40">
+                                            <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded">
+                                                <Lucide name="GitMerge" size={12} className="text-orange-400" /> {REPORT_DATA.branch}
+                                            </span>
+                                            <span className="flex items-center gap-1.5">
+                                                <Lucide name="Code" size={12} /> {REPORT_DATA.commit}
+                                            </span>
+                                            <span className="flex items-center gap-1.5">
+                                                <Lucide name="User" size={12} /> {REPORT_DATA.triggeredBy}
+                                            </span>
+                                            <span className="flex items-center gap-1.5">
+                                                <Lucide name="Clock" size={12} /> {REPORT_DATA.triggeredAt}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                                        <Lucide name="Download" size={14} /> 导出报告
+                                    </button>
+                                    <button className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/60 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                                        <Lucide name="Share2" size={14} /> 分享
+                                    </button>
+                                    <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+                                        <Lucide name="RotateCcw" size={14} /> 重新运行
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-bold text-white mb-1">{REPORT_DATA.summary.total}</div>
+                                <div className="text-xs text-white/40">测试总数</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-bold text-emerald-400 mb-1">{REPORT_DATA.summary.passed}</div>
+                                <div className="text-xs text-white/40">通过</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-bold text-rose-400 mb-1">{REPORT_DATA.summary.failed}</div>
+                                <div className="text-xs text-white/40">失败</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-bold text-amber-400 mb-1">{REPORT_DATA.summary.skipped}</div>
+                                <div className="text-xs text-white/40">跳过</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4 text-center">
+                                <div className={`text-3xl font-bold mb-1 ${
+                                    REPORT_DATA.summary.coverage >= 80 ? 'text-emerald-400' : REPORT_DATA.summary.coverage >= 60 ? 'text-amber-400' : 'text-rose-400'
+                                }`}>{REPORT_DATA.summary.coverage}%</div>
+                                <div className="text-xs text-white/40">覆盖率</div>
+                            </div>
+                            <div className="bg-[#0F0F0F] border border-white/5 rounded-xl p-4 text-center">
+                                <div className="text-3xl font-bold text-indigo-400 mb-1">{REPORT_DATA.summary.aiGenerated}</div>
+                                <div className="text-xs text-white/40">AI 生成</div>
+                            </div>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-lg w-fit border border-white/5">
+                            {[
+                                { id: 'tests', label: '测试用例', icon: 'TestTube' },
+                                { id: 'coverage', label: '覆盖率', icon: 'Activity' },
+                                { id: 'logs', label: '执行日志', icon: 'Terminal' },
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                                        activeTab === tab.id ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
+                                    }`}
+                                >
+                                    <Lucide name={tab.icon} size={14} /> {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Tests Tab */}
+                        {activeTab === 'tests' && (
+                            <div className="space-y-4">
+                                {/* Filters */}
+                                <div className="flex items-center justify-between gap-4 bg-[#0F0F0F] border border-white/5 rounded-xl p-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                                            {[
+                                                { id: 'all', label: '全部' },
+                                                { id: 'passed', label: '通过' },
+                                                { id: 'failed', label: '失败' },
+                                            ].map(filter => (
+                                                <button
+                                                    key={filter.id}
+                                                    onClick={() => setFilterStatus(filter.id)}
+                                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                                                        filterStatus === filter.id ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'
+                                                    }`}
+                                                >
+                                                    {filter.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="relative w-64">
+                                        <Lucide name="Search" size={14} className="absolute left-3 top-2.5 text-white/30" />
+                                        <input
+                                            type="text"
+                                            placeholder="搜索测试用例..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full bg-black/50 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Test Suites */}
+                                <div className="space-y-4">
+                                    {filteredSuites.map(suite => (
+                                        <TestSuiteCard
+                                            key={suite.id}
+                                            suite={suite}
+                                            isExpanded={expandedSuite === suite.id}
+                                            onToggle={() => setExpandedSuite(expandedSuite === suite.id ? null : suite.id)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Coverage Tab */}
+                        {activeTab === 'coverage' && (
+                            <div className="space-y-6">
+                                {/* Overall Coverage */}
+                                <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl p-6">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
+                                        <Lucide name="Activity" size={20} className="text-indigo-400" />
+                                        总体覆盖率
+                                    </h3>
+                                    <div className="flex items-center gap-8">
+                                        <div className="relative w-40 h-40">
+                                            <svg className="w-full h-full -rotate-90">
+                                                <circle cx="80" cy="80" r="70" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="12" />
+                                                <circle
+                                                    cx="80" cy="80" r="70" fill="none"
+                                                    stroke={COVERAGE_DATA.overall >= 80 ? '#34d399' : COVERAGE_DATA.overall >= 60 ? '#fbbf24' : '#f87171'}
+                                                    strokeWidth="12"
+                                                    strokeDasharray={`${2 * Math.PI * 70}`}
+                                                    strokeDashoffset={`${2 * Math.PI * 70 * (1 - COVERAGE_DATA.overall / 100)}`}
+                                                    strokeLinecap="round"
+                                                />
+                                            </svg>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                <div className="text-4xl font-bold text-white">{COVERAGE_DATA.overall}%</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 space-y-4">
+                                            {COVERAGE_DATA.files.map((file, idx) => (
+                                                <div key={idx}>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <span className="text-sm text-white/80 font-mono">{file.file}</span>
+                                                        <span className={`text-sm font-bold ${
+                                                            file.coverage >= 90 ? 'text-emerald-400' : file.coverage >= 70 ? 'text-amber-400' : 'text-rose-400'
+                                                        }`}>{file.coverage}%</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full ${
+                                                                    file.coverage >= 90 ? 'bg-emerald-500' : file.coverage >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                                                                }`}
+                                                                style={{ width: `${file.coverage}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-xs text-white/30 w-20">
+                                                            {file.lines.covered}/{file.lines.total} 行
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Logs Tab */}
+                        {activeTab === 'logs' && (
+                            <div className="bg-[#0A0A0A] border border-white/5 rounded-2xl p-6 font-mono text-sm">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                        <Lucide name="Terminal" size={20} className="text-indigo-400" />
+                                        执行日志
+                                    </h3>
+                                    <button className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors">
+                                        <Lucide name="Copy" size={14} />
+                                    </button>
+                                </div>
+                                <div className="space-y-2 text-white/60 max-h-96 overflow-y-auto scrollbar-thin">
+                                    <div><span className="text-white/30">[14:32:15]</span> <span className="text-blue-400">SYS</span> 启动测试环境...</div>
+                                    <div><span className="text-white/30">[14:32:16]</span> <span className="text-blue-400">SYS</span> Docker 沙箱初始化完成</div>
+                                    <div><span className="text-white/30">[14:32:18]</span> <span className="text-indigo-400">AI</span> 加载 AI 生成的测试用例...</div>
+                                    <div><span className="text-white/30">[14:32:20]</span> <span className="text-blue-400">SYS</span> 运行测试套件: ShippingCalculatorTest</div>
+                                    <div><span className="text-white/30">[14:32:21]</span> <span className="text-emerald-400">OK</span> test_level1_shipping_fixed_fee PASSED (0.12s)</div>
+                                    <div><span className="text-white/30">[14:32:22]</span> <span className="text-emerald-400">OK</span> test_level2_shipping_discount PASSED (0.08s)</div>
+                                    <div><span className="text-white/30">[14:32:23]</span> <span className="text-emerald-400">OK</span> test_level2_below_threshold PASSED (0.05s)</div>
+                                    <div><span className="text-white/30">[14:32:24]</span> <span className="text-emerald-400">OK</span> test_level3_free_shipping PASSED (0.03s)</div>
+                                    <div><span className="text-white/30">[14:32:25]</span> <span className="text-emerald-400">OK</span> test_default_shipping_fee PASSED (0.04s)</div>
+                                    <div><span className="text-white/30">[14:32:26]</span> <span className="text-blue-400">SYS</span> 运行测试套件: ShippingExceptionTest</div>
+                                    <div><span className="text-white/30">[14:32:28]</span> <span className="text-emerald-400">OK</span> test_null_user_throws_exception PASSED (0.15s)</div>
+                                    <div><span className="text-white/30">[14:32:29]</span> <span className="text-emerald-400">OK</span> test_null_order_throws_exception PASSED (0.10s)</div>
+                                    <div><span className="text-white/30">[14:32:30]</span> <span className="text-emerald-400">OK</span> test_negative_amount_throws_exception PASSED (0.08s)</div>
+                                    <div><span className="text-white/30">[14:32:31]</span> <span className="text-blue-400">SYS</span> 运行测试套件: ShippingBoundaryTest</div>
+                                    <div><span className="text-white/30">[14:32:33]</span> <span className="text-emerald-400">OK</span> test_boundary_amount_100 PASSED (0.12s)</div>
+                                    <div><span className="text-white/30">[14:32:34]</span> <span className="text-emerald-400">OK</span> test_boundary_amount_100_01 PASSED (0.10s)</div>
+                                    <div><span className="text-white/30">[14:32:35]</span> <span className="text-emerald-400">OK</span> test_large_amount PASSED (0.08s)</div>
+                                    <div><span className="text-white/30">[14:32:36]</span> <span className="text-emerald-400">OK</span> test_zero_amount PASSED (0.06s)</div>
+                                    <div><span className="text-white/30">[14:32:38]</span> <span className="text-blue-400">SYS</span> 生成覆盖率报告...</div>
+                                    <div><span className="text-white/30">[14:32:40]</span> <span className="text-emerald-400">OK</span> 代码覆盖率: 92.5%</div>
+                                    <div><span className="text-white/30">[14:32:42]</span> <span className="text-emerald-400">OK</span> 测试执行完成: 12/12 通过</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<TestReportView />);
+    </script>
+</body>
+
+</html>
