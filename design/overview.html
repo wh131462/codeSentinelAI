@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSentinel - 仪表盘</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            background-color: #000;
+            color: #e2e8f0;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Icons ---
+        const Icons = {
+            Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />,
+            PieChart: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></>,
+            Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+            Clock: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
+            Layout: <><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="3" x2="21" y1="9" y2="9" /><line x1="9" x2="9" y1="21" y2="9" /></>,
+            GitMerge: <><circle cx="18" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><path d="M6 21V9a9 9 0 0 0 9 9" /></>,
+            Loader2: <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
+            CheckCircle2: <><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></>,
+            Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z" />,
+            AlertTriangle: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" x2="12" y1="9" y2="13" /><line x1="12" x2="12.01" y1="17" y2="17" /></>,
+            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+            Plus: <><path d="M5 12h14" /><path d="M12 5v14" /></>,
+            TrendingUp: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></>,
+            TrendingDown: <><polyline points="22 17 13.5 8.5 8.5 13.5 2 7" /><polyline points="16 17 22 17 22 11" /></>,
+            Filter: <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />,
+            Calendar: <><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></>,
+            ChevronDown: <path d="m6 9 6 6 6-6" />,
+            Eye: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></>,
+            FileText: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></>,
+            Code: <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>,
+            Bug: <><path d="m8 2 1.88 1.88" /><path d="M14.12 3.88 16 2" /><path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" /><path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" /><path d="M12 20v-9" /><path d="M6.53 9C4.6 8.8 3 7.1 3 5" /><path d="M6 13H2" /><path d="M3 21c0-2.1 1.7-3.9 3.8-4" /><path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" /><path d="M22 13h-4" /><path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" /></>,
+            ArrowUpRight: <><path d="M7 7h10v10" /><path d="M7 17 17 7" /></>,
+            BarChart3: <><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></>
+        };
+
+        const Lucide = ({ name, className, size = 16 }) => {
+            const icon = Icons[name];
+            return icon ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icon}
+                </svg>
+            ) : null;
+        };
+
+        // --- Navbar ---
+        const Navbar = ({ active }) => (
+            <nav className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-[#0A0A0A]/80 backdrop-blur-md sticky top-0 z-50">
+                <div className="flex items-center gap-8">
+                    <a href="index.html" className="flex items-center gap-3 group">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                            <Lucide name="Shield" className="text-white" size={20} />
+                        </div>
+                        <span className="font-bold text-xl tracking-tight text-white group-hover:text-white/90 transition-colors">
+                            CodeSentinel <span className="text-indigo-400 text-xs ml-1 font-normal bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">Ent</span>
+                        </span>
+                    </a>
+                    <div className="hidden md:flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                        {[
+                            { id: 'overview', label: '仪表盘', href: 'overview.html' },
+                            { id: 'workspace', label: '工作台', href: 'workspace.html' },
+                            { id: 'pipeline', label: '流水线', href: 'pipeline.html' },
+                            { id: 'configuration', label: '仓库配置', href: 'configuration.html' }
+                        ].map((item) => (
+                            <a key={item.id} href={item.href} className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${active === item.id ? 'bg-white/10 text-white shadow-sm' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}>
+                                {item.label}
+                            </a>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 pl-4">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs font-medium text-white">张三 (Dev)</span>
+                            <span className="text-[10px] text-white/40">GitLab Pro</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-[1px]">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" className="w-full h-full rounded-full bg-black" />
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        );
+
+        // --- Trend Chart Component ---
+        const TrendChart = ({ data, color = 'indigo', height = 60 }) => {
+            const max = Math.max(...data);
+            const min = Math.min(...data);
+            const range = max - min || 1;
+            const points = data.map((v, i) => {
+                const x = (i / (data.length - 1)) * 100;
+                const y = 100 - ((v - min) / range) * 80 - 10;
+                return `${x},${y}`;
+            }).join(' ');
+
+            const colors = {
+                indigo: { stroke: '#818cf8', fill: 'rgba(129, 140, 248, 0.1)' },
+                emerald: { stroke: '#34d399', fill: 'rgba(52, 211, 153, 0.1)' },
+                amber: { stroke: '#fbbf24', fill: 'rgba(251, 191, 36, 0.1)' },
+                rose: { stroke: '#fb7185', fill: 'rgba(251, 113, 133, 0.1)' }
+            };
+
+            const gradientId = `gradient-${color}-${Math.random().toString(36).substr(2, 9)}`;
+
+            return (
+                <svg viewBox="0 0 100 100" className="w-full" style={{ height }} preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor={colors[color].stroke} stopOpacity="0.3" />
+                            <stop offset="100%" stopColor={colors[color].stroke} stopOpacity="0" />
+                        </linearGradient>
+                    </defs>
+                    <polygon
+                        points={`0,100 ${points} 100,100`}
+                        fill={`url(#${gradientId})`}
+                    />
+                    <polyline
+                        points={points}
+                        fill="none"
+                        stroke={colors[color].stroke}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        vectorEffect="non-scaling-stroke"
+                    />
+                </svg>
+            );
+        };
+
+        // --- Radar Chart Component ---
+        const RadarChart = ({ data, size = 200 }) => {
+            const center = size / 2;
+            const radius = size * 0.35;
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            const angleStep = (2 * Math.PI) / labels.length;
+
+            const getPoint = (value, index) => {
+                const angle = angleStep * index - Math.PI / 2;
+                const r = (value / 100) * radius;
+                return {
+                    x: center + r * Math.cos(angle),
+                    y: center + r * Math.sin(angle)
+                };
+            };
+
+            const polygonPoints = values.map((v, i) => {
+                const p = getPoint(v, i);
+                return `${p.x},${p.y}`;
+            }).join(' ');
+
+            const gridLevels = [25, 50, 75, 100];
+
+            return (
+                <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                    {/* Grid */}
+                    {gridLevels.map(level => {
+                        const r = (level / 100) * radius;
+                        const points = labels.map((_, i) => {
+                            const angle = angleStep * i - Math.PI / 2;
+                            return `${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`;
+                        }).join(' ');
+                        return (
+                            <polygon
+                                key={level}
+                                points={points}
+                                fill="none"
+                                stroke="rgba(255,255,255,0.1)"
+                                strokeWidth="1"
+                            />
+                        );
+                    })}
+
+                    {/* Axis lines */}
+                    {labels.map((_, i) => {
+                        const angle = angleStep * i - Math.PI / 2;
+                        const x2 = center + radius * Math.cos(angle);
+                        const y2 = center + radius * Math.sin(angle);
+                        return (
+                            <line
+                                key={i}
+                                x1={center}
+                                y1={center}
+                                x2={x2}
+                                y2={y2}
+                                stroke="rgba(255,255,255,0.1)"
+                                strokeWidth="1"
+                            />
+                        );
+                    })}
+
+                    {/* Data polygon */}
+                    <polygon
+                        points={polygonPoints}
+                        fill="rgba(99, 102, 241, 0.2)"
+                        stroke="#818cf8"
+                        strokeWidth="2"
+                    />
+
+                    {/* Data points */}
+                    {values.map((v, i) => {
+                        const p = getPoint(v, i);
+                        return (
+                            <circle
+                                key={i}
+                                cx={p.x}
+                                cy={p.y}
+                                r="4"
+                                fill="#818cf8"
+                                stroke="#000"
+                                strokeWidth="2"
+                            />
+                        );
+                    })}
+
+                    {/* Labels */}
+                    {labels.map((label, i) => {
+                        const angle = angleStep * i - Math.PI / 2;
+                        const labelRadius = radius + 25;
+                        const x = center + labelRadius * Math.cos(angle);
+                        const y = center + labelRadius * Math.sin(angle);
+                        return (
+                            <text
+                                key={i}
+                                x={x}
+                                y={y}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                className="fill-white/60 text-[10px]"
+                            >
+                                {label}
+                            </text>
+                        );
+                    })}
+                </svg>
+            );
+        };
+
+        // --- Data ---
+        const OVERVIEW_STATS = [
+            { label: '代码质量评分', value: '87', unit: '/100', trend: '+2.4%', trendUp: true, icon: 'Shield', color: 'indigo', chartData: [72, 75, 78, 76, 82, 85, 87] },
+            { label: '测试覆盖率', value: '92.5', unit: '%', trend: '+1.2%', trendUp: true, icon: 'PieChart', color: 'emerald', chartData: [85, 87, 88, 90, 89, 91, 92.5] },
+            { label: 'AI 自动修复率', value: '68', unit: '%', trend: '+5%', trendUp: true, icon: 'Zap', color: 'amber', chartData: [45, 52, 55, 58, 62, 65, 68] },
+            { label: '节省研发工时', value: '342', unit: 'h', trend: '本月', trendUp: true, icon: 'Clock', color: 'rose', chartData: [120, 180, 220, 260, 290, 320, 342] },
+        ];
+
+        const RECENT_PROJECTS = [
+            { name: '电商核心交易系统', branch: 'feat/checkout-v2', status: '扫描中', lastActive: '2 分钟前', gitUrl: 'gitlab.com/corp/trade-core', health: { code: 85, test: 92, doc: 78, security: 88 } },
+            { name: '用户中心微服务', branch: 'main', status: '健康', lastActive: '2 小时前', gitUrl: 'gitlab.com/corp/user-service', health: { code: 90, test: 88, doc: 82, security: 95 } },
+            { name: '支付网关服务', branch: 'fix/timeout', status: '警告', lastActive: '30 分钟前', gitUrl: 'gitlab.com/corp/payment-gateway', health: { code: 72, test: 65, doc: 58, security: 80 } },
+        ];
+
+        const AI_INSIGHTS = [
+            { id: 1, type: 'risk', severity: 'high', title: '高危 SQL 注入风险', desc: '在 UserSearch 服务中检测到拼接 SQL，建议立即修复。', project: 'user-service', file: 'UserSearchService.java:142', time: '10 分钟前' },
+            { id: 2, type: 'opt', severity: 'medium', title: '冗余代码逻辑', desc: 'OrderController 中存在 3 处重复的校验逻辑，建议提取为公共方法。', project: 'trade-core', file: 'OrderController.java:58', time: '1 小时前' },
+            { id: 3, type: 'info', severity: 'low', title: '依赖库版本过低', desc: '检测到 Fastjson 版本存在已知漏洞，建议升级至 v2.0+。', project: 'payment-gateway', file: 'pom.xml:45', time: '2 小时前' },
+            { id: 4, type: 'risk', severity: 'high', title: '敏感信息泄露风险', desc: '检测到硬编码的 API Key，建议移至环境变量。', project: 'trade-core', file: 'PaymentConfig.java:23', time: '3 小时前' },
+            { id: 5, type: 'opt', severity: 'medium', title: '性能优化建议', desc: '检测到 N+1 查询问题，建议使用批量查询优化。', project: 'user-service', file: 'UserRepository.java:87', time: '5 小时前' },
+        ];
+
+        const WEEKLY_STATS = [
+            { day: '周一', scans: 12, issues: 8, fixed: 6 },
+            { day: '周二', scans: 15, issues: 12, fixed: 10 },
+            { day: '周三', scans: 8, issues: 5, fixed: 5 },
+            { day: '周四', scans: 20, issues: 15, fixed: 12 },
+            { day: '周五', scans: 18, issues: 10, fixed: 9 },
+            { day: '周六', scans: 5, issues: 3, fixed: 3 },
+            { day: '周日', scans: 3, issues: 2, fixed: 2 },
+        ];
+
+        // --- Main View ---
+        const OverviewView = () => {
+            const [timeRange, setTimeRange] = useState('7d');
+            const [insightFilter, setInsightFilter] = useState('all');
+            const [selectedProject, setSelectedProject] = useState(null);
+
+            const filteredInsights = AI_INSIGHTS.filter(insight => {
+                if (insightFilter === 'all') return true;
+                if (insightFilter === 'high') return insight.severity === 'high';
+                if (insightFilter === 'risk') return insight.type === 'risk';
+                if (insightFilter === 'opt') return insight.type === 'opt';
+                return true;
+            });
+
+            return (
+                <div className="min-h-screen bg-black text-slate-200">
+                    <Navbar active="overview" />
+                    <div className="max-w-[1600px] mx-auto px-6 py-8 space-y-8 fade-in">
+                        {/* Header */}
+                        <div className="flex justify-between items-end">
+                            <div className="space-y-1">
+                                <h2 className="text-3xl font-bold text-white tracking-tight">全域质量概览</h2>
+                                <p className="text-white/40 text-sm">实时监控所有接入项目的代码健康度与自动化测试状态</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {/* Time Range Selector */}
+                                <div className="flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                                    {[
+                                        { id: '24h', label: '24小时' },
+                                        { id: '7d', label: '7天' },
+                                        { id: '30d', label: '30天' },
+                                    ].map(range => (
+                                        <button
+                                            key={range.id}
+                                            onClick={() => setTimeRange(range.id)}
+                                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${timeRange === range.id ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80'}`}
+                                        >
+                                            {range.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <a href="workspace.html" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20">
+                                    <Lucide name="Plus" size={16} /> 发起新扫描
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Stats Cards with Trend Charts */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {OVERVIEW_STATS.map((stat, idx) => (
+                                <div key={idx} className="bg-[#0F0F0F] border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-all group relative overflow-hidden">
+                                    <div className="relative z-10">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className={`p-3 rounded-xl text-${stat.color}-400 bg-${stat.color}-500/10 group-hover:scale-110 transition-transform`}>
+                                                <Lucide name={stat.icon} size={22} />
+                                            </div>
+                                            <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${stat.trendUp ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                                <Lucide name={stat.trendUp ? 'TrendingUp' : 'TrendingDown'} size={12} />
+                                                {stat.trend}
+                                            </div>
+                                        </div>
+                                        <div className="text-4xl font-bold text-white mb-1 tracking-tighter">
+                                            {stat.value}
+                                            <span className="text-sm font-medium text-white/40 ml-1">{stat.unit}</span>
+                                        </div>
+                                        <div className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">{stat.label}</div>
+                                    </div>
+                                    {/* Mini Trend Chart */}
+                                    <div className="absolute bottom-0 left-0 right-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                                        <TrendChart data={stat.chartData} color={stat.color} height={50} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Main Content Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            {/* Left Column - Projects & Activity */}
+                            <div className="lg:col-span-8 space-y-8">
+                                {/* Weekly Activity Chart */}
+                                <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl p-6">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <Lucide name="BarChart3" size={20} className="text-indigo-400" /> 本周活动统计
+                                        </h3>
+                                        <div className="flex items-center gap-4 text-xs">
+                                            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-indigo-500"></span> 扫描次数</span>
+                                            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-rose-500"></span> 发现问题</span>
+                                            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-emerald-500"></span> 已修复</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-end justify-between gap-4 h-40">
+                                        {WEEKLY_STATS.map((day, idx) => (
+                                            <div key={idx} className="flex-1 flex flex-col items-center gap-2">
+                                                <div className="w-full flex items-end justify-center gap-1 h-32">
+                                                    <div
+                                                        className="w-3 bg-indigo-500/80 rounded-t transition-all hover:bg-indigo-500"
+                                                        style={{ height: `${(day.scans / 20) * 100}%` }}
+                                                        title={`扫描: ${day.scans}`}
+                                                    />
+                                                    <div
+                                                        className="w-3 bg-rose-500/80 rounded-t transition-all hover:bg-rose-500"
+                                                        style={{ height: `${(day.issues / 20) * 100}%` }}
+                                                        title={`问题: ${day.issues}`}
+                                                    />
+                                                    <div
+                                                        className="w-3 bg-emerald-500/80 rounded-t transition-all hover:bg-emerald-500"
+                                                        style={{ height: `${(day.fixed / 20) * 100}%` }}
+                                                        title={`修复: ${day.fixed}`}
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-white/40">{day.day}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Projects Table */}
+                                <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl overflow-hidden">
+                                    <div className="flex justify-between items-center p-5 border-b border-white/5">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <Lucide name="Layout" size={20} className="text-indigo-400" /> 项目健康度监控
+                                        </h3>
+                                        <button className="text-xs text-white/40 hover:text-white flex items-center gap-1 transition-colors">
+                                            查看全部 <Lucide name="ArrowUpRight" size={12} />
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-12 gap-4 p-5 border-b border-white/5 text-xs font-bold text-white/40 uppercase tracking-widest bg-white/[0.02]">
+                                        <div className="col-span-4">项目名称</div>
+                                        <div className="col-span-2">分支</div>
+                                        <div className="col-span-2">状态</div>
+                                        <div className="col-span-2">健康度</div>
+                                        <div className="col-span-2 text-right">最近活动</div>
+                                    </div>
+                                    <div className="divide-y divide-white/5">
+                                        {RECENT_PROJECTS.map((proj, idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`grid grid-cols-12 gap-4 p-5 items-center hover:bg-white/[0.02] transition-colors group cursor-pointer ${selectedProject === idx ? 'bg-indigo-500/5 border-l-2 border-indigo-500' : ''}`}
+                                                onClick={() => setSelectedProject(selectedProject === idx ? null : idx)}
+                                            >
+                                                <div className="col-span-4">
+                                                    <div className="font-bold text-white text-sm group-hover:text-indigo-300 transition-colors">{proj.name}</div>
+                                                    <div className="text-xs text-white/30 font-mono mt-1 truncate">{proj.gitUrl}</div>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black border border-white/10 text-xs text-white/60 font-mono">
+                                                        <Lucide name="GitMerge" size={10} /> {proj.branch}
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    {proj.status === '扫描中' ? (
+                                                        <span className="text-xs text-amber-400 font-medium flex items-center gap-1.5"><Lucide name="Loader2" size={12} className="animate-spin" /> 扫描中</span>
+                                                    ) : proj.status === '警告' ? (
+                                                        <span className="text-xs text-rose-400 font-medium flex items-center gap-1.5"><Lucide name="AlertTriangle" size={12} /> 警告</span>
+                                                    ) : (
+                                                        <span className="text-xs text-emerald-400 font-medium flex items-center gap-1.5"><Lucide name="CheckCircle2" size={12} /> 健康</span>
+                                                    )}
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full ${
+                                                                    (proj.health.code + proj.health.test + proj.health.doc + proj.health.security) / 4 >= 85
+                                                                        ? 'bg-emerald-500'
+                                                                        : (proj.health.code + proj.health.test + proj.health.doc + proj.health.security) / 4 >= 70
+                                                                            ? 'bg-amber-500'
+                                                                            : 'bg-rose-500'
+                                                                }`}
+                                                                style={{ width: `${(proj.health.code + proj.health.test + proj.health.doc + proj.health.security) / 4}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-xs text-white/60 w-8">{Math.round((proj.health.code + proj.health.test + proj.health.doc + proj.health.security) / 4)}%</span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-2 text-right text-xs text-white/30 font-mono">{proj.lastActive}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Column - Insights & Radar */}
+                            <div className="lg:col-span-4 space-y-8">
+                                {/* Project Health Radar - Shows when project selected */}
+                                {selectedProject !== null && (
+                                    <div className="bg-[#0F0F0F] border border-indigo-500/30 rounded-2xl p-6 animate-in fade-in slide-in-from-right-4">
+                                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                            <Lucide name="Activity" size={20} className="text-indigo-400" />
+                                            {RECENT_PROJECTS[selectedProject].name}
+                                        </h3>
+                                        <div className="flex justify-center">
+                                            <RadarChart
+                                                data={{
+                                                    '代码质量': RECENT_PROJECTS[selectedProject].health.code,
+                                                    '测试覆盖': RECENT_PROJECTS[selectedProject].health.test,
+                                                    '文档完整': RECENT_PROJECTS[selectedProject].health.doc,
+                                                    '安全评分': RECENT_PROJECTS[selectedProject].health.security
+                                                }}
+                                                size={220}
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3 mt-4">
+                                            {Object.entries(RECENT_PROJECTS[selectedProject].health).map(([key, value]) => (
+                                                <div key={key} className="bg-black/40 rounded-lg p-3 border border-white/5">
+                                                    <div className="text-xs text-white/40 mb-1">
+                                                        {key === 'code' ? '代码质量' : key === 'test' ? '测试覆盖' : key === 'doc' ? '文档完整' : '安全评分'}
+                                                    </div>
+                                                    <div className={`text-lg font-bold ${value >= 85 ? 'text-emerald-400' : value >= 70 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                        {value}%
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* AI Insights */}
+                                <div className="bg-[#0F0F0F] border border-white/5 rounded-2xl overflow-hidden">
+                                    <div className="p-5 border-b border-white/5">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                <Lucide name="Sparkles" size={20} className="text-indigo-400" /> AI 智能洞察
+                                            </h3>
+                                            <span className="text-xs text-white/40 bg-white/5 px-2 py-1 rounded-full">{filteredInsights.length} 条</span>
+                                        </div>
+                                        {/* Filter Tabs */}
+                                        <div className="flex items-center gap-2">
+                                            {[
+                                                { id: 'all', label: '全部' },
+                                                { id: 'high', label: '高危' },
+                                                { id: 'risk', label: '风险' },
+                                                { id: 'opt', label: '优化' },
+                                            ].map(filter => (
+                                                <button
+                                                    key={filter.id}
+                                                    onClick={() => setInsightFilter(filter.id)}
+                                                    className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                                                        insightFilter === filter.id
+                                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                                                            : 'text-white/40 hover:text-white/80 border border-transparent'
+                                                    }`}
+                                                >
+                                                    {filter.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="max-h-[480px] overflow-y-auto scrollbar-thin">
+                                        <div className="divide-y divide-white/5">
+                                            {filteredInsights.map((insight) => (
+                                                <div key={insight.id} className="p-5 hover:bg-white/[0.02] transition-all cursor-pointer group">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${
+                                                            insight.type === 'risk' ? 'bg-rose-500/20 text-rose-400' :
+                                                            insight.type === 'opt' ? 'bg-amber-500/20 text-amber-400' :
+                                                            'bg-blue-500/20 text-blue-400'
+                                                        }`}>
+                                                            <Lucide name={insight.type === 'risk' ? 'AlertTriangle' : insight.type === 'opt' ? 'Zap' : 'Activity'} size={16} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <h4 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors truncate">{insight.title}</h4>
+                                                                {insight.severity === 'high' && (
+                                                                    <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-400 text-[10px] font-bold rounded">高危</span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-white/50 leading-relaxed mb-3">{insight.desc}</p>
+                                                            <div className="flex items-center gap-3 text-[10px] text-white/30">
+                                                                <span className="bg-white/5 px-2 py-1 rounded border border-white/5">{insight.project}</span>
+                                                                <span className="flex items-center gap-1"><Lucide name="FileText" size={10} /> {insight.file}</span>
+                                                                <span className="flex items-center gap-1"><Lucide name="Clock" size={10} /> {insight.time}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<OverviewView />);
+    </script>
+</body>
+
+</html>

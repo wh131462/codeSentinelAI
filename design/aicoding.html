@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSentinel AI 研发效能平台</title>
+    
+    <!-- 1. 引入 Tailwind CSS (样式框架) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. 引入 React 和 Babel (前端逻辑) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 3. 全局样式 -->
+    <style>
+        body { background-color: #000; color: #e2e8f0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        /* 隐藏滚动条但保留功能 */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 动画类 */
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- 4. 核心业务逻辑 -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef, Fragment } = React;
+
+        // --- 图标库封装 (模拟 lucide-react) ---
+        // 修复：确保多路径 SVG 图标被 Fragment <>...</> 包裹
+        const Icons = {
+            Shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />,
+            Search: <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+            GitPullRequest: <><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" x2="6" y1="9" y2="21"/></>,
+            GitMerge: <><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/></>,
+            GitCommit: <><circle cx="12" cy="12" r="3"/><line x1="3" x2="9" y1="12" y2="12"/><line x1="15" x2="21" y1="12" y2="12"/></>,
+            Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>,
+            Code: <><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></>,
+            Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+            CheckCircle2: <><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>,
+            Play: <polygon points="5 3 19 12 5 21 5 3"/>,
+            Terminal: <><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></>,
+            RotateCcw: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></>,
+            Loader2: <path d="M21 12a9 9 0 1 1-6.219-8.56"/>,
+            Check: <path d="M20 6 9 17l-5-5"/>,
+            X: <path d="M18 6 6 18M6 6l12 12"/>,
+            ArrowRight: <path d="M5 12h14M12 5l7 7-7 7"/>,
+            Server: <><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></>,
+            User: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+            Settings: <><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.18-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.18-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.18.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.18.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>,
+            UploadCloud: <><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></>,
+            FileCode: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m10 13-2 2 2 2"/><path d="m14 17 2-2-2-2"/></>,
+            Link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>,
+            Clock: <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+            MoreHorizontal: <><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>,
+            Plus: <><path d="M5 12h14"/><path d="M12 5v14"/></>,
+            FilePlus: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="11" y2="17"/><line x1="9" x2="15" y1="14" y2="14"/></>,
+            Layout: <><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></>,
+            PieChart: <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></>,
+            Sparkles: <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>,
+            FileText: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></>,
+            AlertTriangle: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></>,
+            TrendingUp: <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>,
+            ChevronRight: <path d="m9 18 6-6-6-6"/>
+        };
+
+        const Lucide = ({ name, className, size = 16, strokeWidth = 2, fill = "none" }) => {
+            const icon = Icons[name];
+            if (!icon) return null;
+            return (
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width={size} 
+                    height={size} 
+                    viewBox="0 0 24 24" 
+                    fill={fill}
+                    stroke="currentColor" 
+                    strokeWidth={strokeWidth} 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={className}
+                >
+                    {icon}
+                </svg>
+            );
+        };
+
+        // --- Mock Data ---
+        const RECENT_PROJECTS = [
+            { name: '电商核心交易系统', branch: 'feat/checkout-v2', status: '扫描中', lastActive: '2 分钟前', gitUrl: 'gitlab.com/corp/trade-core' },
+            { name: '用户中心微服务', branch: 'main', status: '健康', lastActive: '2 小时前', gitUrl: 'gitlab.com/corp/user-service' },
+        ];
+
+        const OVERVIEW_STATS = [
+            { label: '代码质量评分', value: '87', unit: '/100', trend: '+2.4%', status: 'good', icon: 'Shield' },
+            { label: '测试覆盖率', value: '92.5', unit: '%', trend: '+1.2%', status: 'good', icon: 'PieChart' },
+            { label: 'AI 自动修复率', value: '68', unit: '%', trend: '+5%', status: 'neutral', icon: 'Zap' },
+            { label: '节省研发工时', value: '342', unit: 'h', trend: '本月', status: 'good', icon: 'Clock' },
+        ];
+
+        const AI_INSIGHTS = [
+            { id: 1, type: 'risk', title: '高危 SQL 注入风险', desc: '在 UserSearch 服务中检测到拼接 SQL，建议立即修复。', project: 'user-service' },
+            { id: 2, type: 'opt', title: '冗余代码逻辑', desc: 'OrderController 中存在 3 处重复的校验逻辑，建议提取为公共方法。', project: 'trade-core' },
+            { id: 3, type: 'info', title: '依赖库版本过低', desc: '检测到 Fastjson 版本存在已知漏洞，建议升级至 v2.0+。', project: 'payment-gateway' },
+        ];
+
+        const MOCK_BRANCHES = ['main', 'develop', 'feat/shipping-logic', 'feat/user-auth-v2', 'fix/inventory-bug'];
+
+        const MOCK_DOCS = [
+            { id: '1', name: 'PRD-2024-001_电商核心交易流程.pdf', size: '2.4 MB', status: 'parsed', uploadTime: '2024-01-15 10:00' },
+            { id: '2', name: 'API_Spec_v2.0.yaml', size: '156 KB', status: 'parsed', uploadTime: '2024-01-16 14:20' },
+        ];
+
+        const MOCK_PIPELINES = [
+            {
+                id: '#1082',
+                commitMsg: 'feat: update shipping logic for VIP users',
+                branch: 'feat/shipping-logic',
+                author: '张三',
+                status: 'running',
+                duration: '00:45',
+                timeAgo: '刚刚',
+                stages: [
+                    { name: 'Source', status: 'success' },
+                    { name: 'Analysis', status: 'success' },
+                    { name: 'Test Gen', status: 'running' },
+                    { name: 'Execution', status: 'pending' },
+                    { name: 'Auto-Fix', status: 'pending' }
+                ]
+            },
+            {
+                id: '#1081',
+                commitMsg: 'fix: null pointer exception in user service',
+                branch: 'fix/npe-user',
+                author: '李四',
+                status: 'success',
+                duration: '02:14',
+                timeAgo: '2 小时前',
+                stages: [
+                    { name: 'Source', status: 'success' },
+                    { name: 'Analysis', status: 'success' },
+                    { name: 'Test Gen', status: 'success' },
+                    { name: 'Execution', status: 'success' },
+                    { name: 'Auto-Fix', status: 'skipped' }
+                ]
+            }
+        ];
+
+        const CODE_BEFORE = `public BigDecimal calculate(User user, Order order) {
+    // 基础逻辑：Level 1 用户运费
+    if (user.getLevel() == 1) {
+        return new BigDecimal("10.00");
+    }
+    
+    // AI 警告：检测到与 PRD v2.1 不一致，缺失 Level 2 运费逻辑
+    
+    if (user.getLevel() >= 3) {
+        return BigDecimal.ZERO;
+    }
+    
+    return new BigDecimal("15.00"); // 默认兜底运费
+}`;
+
+        const CODE_AFTER = `public BigDecimal calculate(User user, Order order) {
+    // 基础逻辑：Level 1 用户运费
+    if (user.getLevel() == 1) {
+        return new BigDecimal("10.00");
+    }
+    
+    // AI 自动修复：已补充 Level 2 逻辑 (满100减50%)
+    if (user.getLevel() == 2) {
+        if (order.getAmount().compareTo(new BigDecimal("100")) > 0) {
+             return new BigDecimal("7.50"); // 15.00 的 50%
+        }
+    }
+    
+    if (user.getLevel() >= 3) {
+        return BigDecimal.ZERO;
+    }
+    
+    return new BigDecimal("15.00"); // 默认兜底运费
+}`;
+
+        // --- 子组件 ---
+
+        const Navbar = ({ active, onChange }) => (
+            <nav className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-[#0A0A0A] sticky top-0 z-50">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 cursor-pointer group" onClick={() => onChange('home')}>
+                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                            <Lucide name="Shield" className="text-white" size={18} />
+                        </div>
+                        <span className="font-bold text-lg tracking-tight text-white">
+                            CodeSentinel <span className="text-indigo-400 text-xs ml-1 font-normal bg-indigo-500/10 px-1.5 py-0.5 rounded">Ent</span>
+                        </span>
+                    </div>
+                    <div className="hidden md:flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
+                        {[
+                            { id: 'overview', label: '仪表盘' },
+                            { id: 'workspace', label: '工作台' },
+                            { id: 'pipeline', label: '流水线' },
+                            { id: 'configuration', label: '仓库配置' }
+                        ].map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => onChange(item.id)}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                                    active === item.id 
+                                        ? 'bg-white/10 text-white shadow-sm' 
+                                        : 'text-white/40 hover:text-white/80'
+                                }`}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black border border-white/10 text-white/40 text-sm hover:border-white/20 transition-colors cursor-text min-w-[240px]">
+                        <Lucide name="Search" size={14} />
+                        <span>搜索需求 / 代码 / MR...</span>
+                    </div>
+                    <div className="flex items-center gap-3 pl-4 border-l border-white/10">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs font-medium text-white">张三 (Dev)</span>
+                            <span className="text-[10px] text-white/40">GitLab 已连接</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-500 to-red-500 p-[1px]">
+                            <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-xs font-bold text-orange-500">GL</div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        );
+
+        const PipelineSteps = ({ currentStage }) => {
+            const steps = [
+                { id: 'analyzing', label: '影响分析', icon: 'Search' },
+                { id: 'generating', label: '生成用例', icon: 'Code' },
+                { id: 'executing', label: '执行测试', icon: 'Play' },
+                { id: 'healing', label: '自动修复', icon: 'Zap' },
+                { id: 'success', label: '验证通过', icon: 'CheckCircle2' },
+            ];
+
+            const getStepStatus = (stepId) => {
+                const stages = ['idle', 'analyzing', 'generating', 'executing', 'failure', 'healing', 'success'];
+                const currentIndex = stages.indexOf(currentStage === 'failure' ? 'executing' : currentStage);
+                const stepIndex = stages.indexOf(stepId);
+                
+                if (currentStage === 'failure' && stepId === 'executing') return 'error';
+                if (currentIndex > stepIndex) return 'completed';
+                if (currentIndex === stepIndex) return 'active';
+                return 'pending';
+            };
+
+            return (
+                <div className="flex items-center justify-between px-12 py-6 border-b border-white/5 bg-[#050505]">
+                    {steps.map((step, idx) => {
+                        const status = getStepStatus(step.id);
+                        return (
+                            <React.Fragment key={step.id}>
+                                <div className={`flex flex-col items-center gap-2 relative z-10 ${status === 'pending' ? 'opacity-30' : 'opacity-100'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
+                                        status === 'active' ? 'border-indigo-500 bg-indigo-500/20 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]' :
+                                        status === 'completed' ? 'border-emerald-500 bg-emerald-500 text-black' :
+                                        status === 'error' ? 'border-rose-500 bg-rose-500 text-white' :
+                                        'border-white/20 bg-black text-white/40'
+                                    }`}>
+                                        {status === 'active' ? <Lucide name="Loader2" size={18} className="animate-spin" /> : 
+                                         status === 'completed' ? <Lucide name="Check" size={18} strokeWidth={3} /> :
+                                         status === 'error' ? <Lucide name="X" size={18} strokeWidth={3} /> :
+                                         <Lucide name={step.icon} size={18} />}
+                                    </div>
+                                    <span className={`text-xs font-medium tracking-wide ${
+                                        status === 'active' ? 'text-indigo-400' : 
+                                        status === 'completed' ? 'text-emerald-500' :
+                                        status === 'error' ? 'text-rose-500' : 
+                                        'text-white/40'
+                                    }`}>{step.label}</span>
+                                </div>
+                                {idx < steps.length - 1 && (
+                                    <div className="flex-1 h-[2px] bg-white/5 mx-4 relative overflow-hidden">
+                                        <div className={`absolute inset-0 bg-indigo-500 transition-transform duration-700 ${
+                                            getStepStatus(steps[idx+1].id) !== 'pending' ? 'translate-x-0' : '-translate-x-full'
+                                        }`} />
+                                    </div>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+            );
+        };
+
+        // --- 核心视图组件 ---
+
+        const OverviewView = ({ onNavigateToWorkspace }) => (
+            <div className="max-w-7xl mx-auto px-6 py-8 space-y-8 h-[calc(100vh-64px)] overflow-y-auto fade-in">
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h2 className="text-2xl font-bold text-white mb-2">全域质量概览 (Dashboard)</h2>
+                        <p className="text-white/40 text-sm">实时监控所有接入项目的代码健康度与自动化测试状态。</p>
+                    </div>
+                    <button onClick={onNavigateToWorkspace} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                        <Lucide name="Plus" size={16} /> 发起新扫描
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {OVERVIEW_STATS.map((stat, idx) => (
+                        <div key={idx} className="bg-white/5 border border-white/5 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2.5 bg-black/40 rounded-lg text-indigo-400">
+                                    <Lucide name={stat.icon} size={20} />
+                                </div>
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stat.trend.startsWith('+') ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                                    {stat.trend}
+                                </span>
+                            </div>
+                            <div className="text-3xl font-bold text-white mb-1">
+                                {stat.value}
+                                <span className="text-sm font-normal text-white/40 ml-1">{stat.unit}</span>
+                            </div>
+                            <div className="text-xs text-white/40">{stat.label}</div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-6">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <Lucide name="Layout" size={18} className="text-indigo-400" /> 项目健康度监控
+                        </h3>
+                        <div className="bg-white/5 border border-white/5 rounded-xl overflow-hidden">
+                            <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/5 text-xs font-medium text-white/40 uppercase">
+                                <div className="col-span-4">项目名称</div>
+                                <div className="col-span-3">最后活跃分支</div>
+                                <div className="col-span-2">状态</div>
+                                <div className="col-span-3 text-right">最近活动</div>
+                            </div>
+                            <div className="divide-y divide-white/5">
+                                {RECENT_PROJECTS.map((proj, idx) => (
+                                    <div key={idx} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-white/5 transition-colors group cursor-pointer" onClick={onNavigateToWorkspace}>
+                                        <div className="col-span-4">
+                                            <div className="font-medium text-white group-hover:text-indigo-300 transition-colors">{proj.name}</div>
+                                            <div className="text-xs text-white/30 font-mono mt-0.5 truncate">{proj.gitUrl}</div>
+                                        </div>
+                                        <div className="col-span-3">
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-black/40 border border-white/10 text-xs text-white/60 font-mono">
+                                                <Lucide name="GitMerge" size={10} /> {proj.branch}
+                                            </span>
+                                        </div>
+                                        <div className="col-span-2">
+                                            {proj.status === '扫描中' ? (
+                                                <span className="text-xs text-amber-400 flex items-center gap-1.5"><Lucide name="Loader2" size={12} className="animate-spin" /> 扫描中</span>
+                                            ) : (
+                                                <span className="text-xs text-emerald-400 flex items-center gap-1.5"><Lucide name="CheckCircle2" size={12} /> 健康</span>
+                                            )}
+                                        </div>
+                                        <div className="col-span-3 text-right text-xs text-white/30">{proj.lastActive}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="space-y-6">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <Lucide name="Sparkles" size={18} className="text-indigo-400" /> AI 每日洞察
+                        </h3>
+                        <div className="space-y-4">
+                            {AI_INSIGHTS.map((insight) => (
+                                <div key={insight.id} className="bg-white/5 border border-white/5 p-4 rounded-xl hover:border-indigo-500/30 transition-all cursor-pointer group">
+                                    <div className="flex items-start gap-3">
+                                        <div className={`mt-0.5 p-1.5 rounded-full ${insight.type === 'risk' ? 'bg-rose-500/20 text-rose-400' : insight.type === 'opt' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                                            <Lucide name={insight.type === 'risk' ? 'AlertTriangle' : insight.type === 'opt' ? 'Zap' : 'Activity'} size={14} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-medium text-white mb-1 group-hover:text-indigo-300 transition-colors">{insight.title}</h4>
+                                            <p className="text-xs text-white/50 leading-relaxed mb-2">{insight.desc}</p>
+                                            <div className="text-[10px] text-white/30 bg-white/5 px-2 py-0.5 rounded w-fit">{insight.project}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const ConfigurationView = () => {
+            const [repoUrl, setRepoUrl] = useState('https://gitlab.com/corp/trade-core.git');
+            const [token, setToken] = useState('glpat-xxxxxxxxxxxx');
+            const [isConnecting, setIsConnecting] = useState(false);
+            const [isConnected, setIsConnected] = useState(true);
+
+            const handleConnect = () => {
+                setIsConnecting(true);
+                setTimeout(() => { setIsConnecting(false); setIsConnected(true); }, 1500);
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto px-6 py-12 space-y-8 fade-in">
+                    <div className="flex flex-col gap-2">
+                        <h2 className="text-3xl font-bold text-white">基础设施配置</h2>
+                        <p className="text-white/40">管理全局代码仓库连接与凭证。</p>
+                    </div>
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-8 space-y-8">
+                        <div className="flex items-center gap-4 border-b border-white/5 pb-6">
+                            <div className="p-3 bg-indigo-500/10 rounded-xl text-indigo-500"><Lucide name="GitPullRequest" size={28} /></div>
+                            <div><h3 className="text-xl font-semibold text-white">默认代码仓库</h3><p className="text-sm text-white/40">配置项目主仓库地址</p></div>
+                            <div className="ml-auto">
+                                {isConnected ? (
+                                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-medium flex items-center gap-1"><Lucide name="CheckCircle2" size={12} /> 连接正常</span>
+                                ) : (
+                                    <span className="px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full text-xs font-medium flex items-center gap-1"><Lucide name="AlertCircle" size={12} /> 未连接</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-sm font-medium text-white/70 mb-2 block">仓库地址 (Git URL)</label>
+                                <div className="relative group">
+                                    <input type="text" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50 transition-colors pl-10" />
+                                    <div className="absolute left-3 top-3.5 text-white/30"><Lucide name="Link" size={18} /></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-white/70 mb-2 block">访问令牌 (Access Token)</label>
+                                <div className="relative group">
+                                    <input type="password" value={token} onChange={(e) => setToken(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50 transition-colors pl-10 font-mono" />
+                                    <div className="absolute left-3 top-3.5 text-white/30"><Lucide name="Shield" size={18} /></div>
+                                </div>
+                            </div>
+                            <div className="pt-4 flex justify-end">
+                                <button onClick={handleConnect} disabled={isConnecting} className={`px-6 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all ${isConnected ? 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}>
+                                    {isConnecting ? <Lucide name="Loader2" size={18} className="animate-spin" /> : isConnected ? <><Lucide name="Check" size={18} /> 更新配置</> : '测试连接'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PipelineView = () => (
+            <div className="max-w-6xl mx-auto px-6 py-8 h-[calc(100vh-64px)] flex flex-col fade-in">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">流水线执行记录 <span className="text-sm font-normal text-white/40 px-2 py-0.5 bg-white/5 rounded-full">Project: trade-core</span></h2>
+                    <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"><Lucide name="Play" size={16} /> 手动触发</button>
+                </div>
+                <div className="bg-white/5 border border-white/5 rounded-xl overflow-hidden flex-1 flex flex-col">
+                    <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/10 bg-white/5 text-xs font-medium text-white/40 uppercase tracking-wider">
+                        <div className="col-span-1">Status</div><div className="col-span-4">Commit / Branch</div><div className="col-span-4">Stages</div><div className="col-span-2">Duration</div><div className="col-span-1 text-right">Actions</div>
+                    </div>
+                    <div className="overflow-y-auto flex-1">
+                        {MOCK_PIPELINES.map((run) => (
+                            <div key={run.id} className="grid grid-cols-12 gap-4 p-4 border-b border-white/5 items-center hover:bg-white/5 transition-colors group">
+                                <div className="col-span-1"><div className={`flex items-center gap-2 text-sm font-medium ${run.status === 'success' ? 'text-emerald-400' : run.status === 'failed' ? 'text-rose-400' : 'text-blue-400'}`}>{run.status === 'running' ? <Lucide name="Loader2" size={16} className="animate-spin" /> : run.status === 'success' ? <Lucide name="CheckCircle2" size={16} /> : <Lucide name="X" size={16} />}<span>{run.id}</span></div></div>
+                                <div className="col-span-4"><div className="text-sm text-white font-medium truncate mb-1">{run.commitMsg}</div><div className="flex items-center gap-3 text-xs text-white/40"><span className="flex items-center gap-1 font-mono"><Lucide name="GitMerge" size={12} /> {run.branch}</span><span className="flex items-center gap-1"><Lucide name="User" size={12} /> {run.author}</span></div></div>
+                                <div className="col-span-4 flex items-center gap-1">{run.stages.map((stage, idx) => (<div key={idx} className={`w-8 h-2 rounded-full mx-0.5 ${stage.status === 'success' ? 'bg-emerald-500' : stage.status === 'failed' ? 'bg-rose-500' : stage.status === 'running' ? 'bg-blue-500 animate-pulse' : 'bg-white/10'}`} />))}</div>
+                                <div className="col-span-2 text-sm text-white/60"><div className="flex items-center gap-1"><Lucide name="Clock" size={12} /> {run.duration}</div><div className="text-xs text-white/30">{run.timeAgo}</div></div>
+                                <div className="col-span-1 flex justify-end"><button className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white"><Lucide name="MoreHorizontal" size={16} /></button></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const WorkspaceView = () => {
+            const [stage, setStage] = useState('idle');
+            const [logs, setLogs] = useState([]);
+            const scrollRef = useRef(null);
+            const [selectedBranch, setSelectedBranch] = useState(MOCK_BRANCHES[2]);
+            const [selectedDoc, setSelectedDoc] = useState(MOCK_DOCS[0].id);
+
+            const addLog = (type, message) => {
+                setLogs(prev => [...prev, { id: Date.now() + Math.random(), type, message, timestamp: new Date().toLocaleTimeString('zh-CN') }]);
+            };
+
+            useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [logs]);
+
+            const startSimulation = async () => {
+                setStage('analyzing'); setLogs([]);
+                const docName = MOCK_DOCS.find(d => d.id === selectedDoc)?.name || '未知文档';
+                addLog('info', `启动新测试任务 | 分支: ${selectedBranch}`);
+                addLog('info', `加载需求文档: ${docName}`);
+                await new Promise(r => setTimeout(r, 1500));
+                addLog('ai', '正在分析代码变更影响范围...'); addLog('ai', '检测到核心业务逻辑变更: ShippingCalculator.java');
+                setStage('generating');
+                await new Promise(r => setTimeout(r, 1500));
+                addLog('ai', '发现逻辑偏差！正在生成针对性测试用例...'); addLog('success', '已生成用例: test_level2_shipping_discount()');
+                setStage('executing');
+                await new Promise(r => setTimeout(r, 2000));
+                addLog('info', '正在 Docker 沙箱中执行测试...'); addLog('error', '断言失败: 期望值 7.50, 实际返回 15.00');
+                setStage('failure');
+                await new Promise(r => setTimeout(r, 1000));
+                setStage('healing');
+                addLog('ai', '启动根因分析 (RCA): 代码缺少 Level 2 用户逻辑分支'); addLog('ai', '正在生成修复补丁...');
+                await new Promise(r => setTimeout(r, 2500));
+                addLog('info', '应用补丁并重新运行验证测试...'); addLog('success', 'test_level2_shipping_discount() 通过');
+                setStage('success');
+                addLog('gitlab', `测试通过。正在向 GitLab MR 提交修复补丁...`); addLog('success', '任务完成: 代码已根据 PRD 修复并验证。');
+            };
+
+            return (
+                <div className="flex flex-col h-[calc(100vh-64px)] bg-black fade-in">
+                    <div className="h-12 bg-[#0F0F0F] border-b border-white/5 flex items-center px-6 justify-between text-sm">
+                        {stage === 'idle' ? <div className="text-white/40 text-xs">请配置并启动测试任务</div> : (
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2 text-white/60"><Lucide name="GitPullRequest" size={14} className="text-orange-500" /><span className="font-mono text-white/80">{selectedBranch}</span></div>
+                                <div className="flex items-center gap-2 text-white/60"><Lucide name="FileText" size={14} className="text-blue-400" /><span className="font-mono text-white/80 truncate max-w-[200px]">{MOCK_DOCS.find(d => d.id === selectedDoc)?.name}</span></div>
+                            </div>
+                        )}
+                    </div>
+                    <PipelineSteps currentStage={stage} />
+                    <div className="flex-1 flex overflow-hidden">
+                        <div className="flex-1 border-r border-white/5 flex flex-col relative bg-[#050505]">
+                            {stage === 'idle' ? (
+                                <div className="flex-1 flex flex-col items-center justify-center p-8">
+                                    <div className="w-full max-w-lg space-y-8">
+                                        <div className="text-center space-y-2">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-indigo-500/20 mb-6"><Lucide name="Sparkles" size={32} className="text-white" /></div>
+                                            <h2 className="text-3xl font-bold text-white">新建智能测试任务</h2>
+                                            <p className="text-white/40">选择功能分支与需求文档，AI 将自动进行一致性校验与回归测试。</p>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6 backdrop-blur-sm">
+                                            <div className="space-y-3">
+                                                <label className="text-sm font-medium text-white/70 flex items-center gap-2"><Lucide name="GitMerge" size={16} /> 选择功能分支</label>
+                                                <div className="relative"><select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white appearance-none focus:outline-none focus:border-indigo-500/50 transition-colors">{MOCK_BRANCHES.map(b => (<option key={b} value={b}>{b}</option>))}</select><div className="absolute right-4 top-3.5 text-white/30 pointer-events-none"><Lucide name="ChevronRight" size={16} className="rotate-90" /></div></div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <label className="text-sm font-medium text-white/70 flex items-center gap-2"><Lucide name="FileText" size={16} /> 关联需求文档</label>
+                                                <div className="relative"><select value={selectedDoc} onChange={(e) => setSelectedDoc(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white appearance-none focus:outline-none focus:border-indigo-500/50 transition-colors">{MOCK_DOCS.map(d => (<option key={d.id} value={d.id}>{d.name}</option>))}</select><div className="absolute right-4 top-3.5 text-white/30 pointer-events-none"><Lucide name="ChevronRight" size={16} className="rotate-90" /></div></div>
+                                            </div>
+                                            <button onClick={startSimulation} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"><Lucide name="Play" size={20} fill="currentColor" /> 保存配置并开始分析</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col">
+                                    <div className="h-10 bg-[#0A0A0A] border-b border-white/5 flex items-center px-4 justify-between">
+                                        <div className="flex items-center gap-3"><span className="flex items-center text-xs text-white/60 bg-white/5 px-2 py-1 rounded border border-white/5"><Lucide name="Code" size={12} className="mr-1.5" /> ShippingCalculator.java</span></div>
+                                    </div>
+                                    <div className="flex-1 p-6 overflow-auto font-mono text-sm">
+                                        {(stage === 'analyzing' || stage === 'generating' || stage === 'executing' || stage === 'failure') ? (
+                                            <pre className="text-white/70 leading-relaxed">{CODE_BEFORE.split('\n').map((line, i) => (<div key={i} className={`flex ${line.includes('AI 警告') ? 'bg-amber-500/10 text-amber-200' : ''}`}><span className="w-8 inline-block text-white/20 select-none mr-4 text-right">{i+1}</span>{line}</div>))}</pre>
+                                        ) : (
+                                            <div className="relative">
+                                                <pre className="text-white/70 leading-relaxed">{CODE_AFTER.split('\n').map((line, i) => (<div key={i} className={`flex ${(line.includes('Level 2') || line.includes('7.50')) ? 'bg-emerald-500/10' : ''}`}><span className="w-8 inline-block text-white/20 select-none mr-4 text-right">{i+1}</span><span className={(line.includes('Level 2') || line.includes('7.50')) ? 'text-emerald-300' : ''}>{line}</span></div>))}</pre>
+                                                <div className="absolute top-1/3 right-10 bg-emerald-900/20 border border-emerald-500/50 p-4 rounded-xl backdrop-blur-sm shadow-2xl animate-in fade-in"><div className="flex items-center gap-2 text-emerald-400 mb-2 font-bold text-xs uppercase"><Lucide name="Zap" size={14} /> AI 自动修复已生效</div><p className="text-emerald-100/70 text-xs">已注入 Level 2 用户逻辑分支。<br/>约束条件: 订单金额 &gt; 100。</p></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="w-[420px] bg-[#020202] flex flex-col border-l border-white/5">
+                            <div className="h-10 border-b border-white/5 flex items-center px-4 bg-[#0A0A0A]"><span className="text-xs font-medium text-white/50 flex items-center gap-2"><Lucide name="Terminal" size={12} /> CodeSentinel 智能终端</span></div>
+                            <div className="flex-1 p-4 overflow-y-auto space-y-3 font-mono text-xs" ref={scrollRef}>
+                                {logs.length === 0 && <div className="h-full flex flex-col items-center justify-center text-white/20 gap-4"><Lucide name="Sparkles" size={48} className="text-indigo-500/50" /><p className="text-center">准备就绪<br/>等待任务指令...</p></div>}
+                                {logs.map((log) => (
+                                    <div key={log.id} className="fade-in"><div className="flex gap-3 text-white/90"><span className="text-white/30 shrink-0 select-none w-14">{log.timestamp.split(' ')[0]}</span><div className="flex-1 break-words">{log.type === 'gitlab' && <span className="text-orange-500 font-bold mr-2">GIT {'>'}</span>}{log.type === 'ai' && <span className="text-indigo-400 font-bold mr-2">AI {'>'}</span>}{log.type === 'error' && <span className="text-rose-500 font-bold mr-2">ERR {'>'}</span>}{log.type === 'success' && <span className="text-emerald-500 font-bold mr-2">OK {'>'}</span>}{log.type === 'info' && <span className="text-blue-400 font-bold mr-2">SYS {'>'}</span>}<span className={log.type === 'error' ? 'text-rose-400' : log.type === 'ai' ? 'text-indigo-200' : log.type === 'gitlab' ? 'text-orange-200' : log.type === 'success' ? 'text-emerald-400' : 'text-white/60'}>{log.message}</span></div></div></div>
+                                ))}
+                            </div>
+                            <div className="p-4 border-t border-white/5 bg-[#050505]">
+                                {stage === 'idle' ? <div className="text-center text-xs text-white/20">配置任务后点击开始</div> : stage === 'success' ? (
+                                    <div className="flex gap-3">
+                                        <button onClick={() => setStage('idle')} className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"><Lucide name="FilePlus" size={16} /> 新建任务</button>
+                                        <button onClick={startSimulation} className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20"><Lucide name="RotateCcw" size={16} /> 再次执行</button>
+                                    </div>
+                                ) : <div className="w-full py-3 rounded-lg border border-white/10 bg-black text-white/40 flex items-center justify-center gap-2 cursor-not-allowed"><Lucide name="Loader2" size={16} className="animate-spin" /> 任务执行中...</div>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const HomeView = ({ onNavigate }) => (
+            <div className="max-w-6xl mx-auto px-6 py-20 fade-in text-center">
+                <div className="mb-16 relative">
+                    <div className="absolute top-[-50px] left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+                    <h1 className="text-6xl font-bold tracking-tighter mb-6 text-white relative z-10">CodeSentinel <span className="text-indigo-500">Platform</span></h1>
+                    <p className="text-xl text-white/40 max-w-2xl mx-auto mb-10 relative z-10">首个深度集成 GitLab，能自动检测需求一致性、生成测试并自愈修复的 AI 研发效能平台。</p>
+                    <button onClick={onNavigate} className="relative z-10 px-8 py-4 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">进入控制台</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 max-w-4xl mx-auto text-left">
+                    {RECENT_PROJECTS.map((proj, i) => (
+                        <div key={i} className="group relative p-6 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer" onClick={onNavigate}>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-orange-500/10 text-orange-500"><Lucide name="GitPullRequest" size={20} /></div><div><h3 className="font-semibold text-white group-hover:text-indigo-300 transition-colors">{proj.name}</h3><p className="text-sm text-white/40 font-mono">{proj.branch}</p></div></div>
+                                <div className={`px-2 py-1 rounded text-xs font-medium ${proj.status === '健康' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1'}`}>{proj.status === '扫描中' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"/>}{proj.status}</div>
+                            </div>
+                            <div className="flex items-center justify-between mt-6"><div className="flex items-center gap-2 text-xs text-white/30"><Lucide name="GitCommit" size={12} /><span>最近提交: update logic</span></div><span className="text-xs text-white/30">{proj.lastActive}</span></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const App = () => {
+            const [view, setView] = useState('home');
+            return (
+                <div className="min-h-screen bg-black text-slate-200 font-sans selection:bg-indigo-500/30 flex flex-col">
+                    <Navbar active={view} onChange={setView} />
+                    <main className="flex-1 overflow-hidden">
+                        {view === 'home' && <HomeView onNavigate={() => setView('workspace')} />}
+                        {view === 'overview' && <OverviewView onNavigateToWorkspace={() => setView('workspace')} />}
+                        {view === 'workspace' && <WorkspaceView />}
+                        {view === 'pipeline' && <PipelineView />}
+                        {view === 'configuration' && <ConfigurationView />}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
